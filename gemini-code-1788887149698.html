@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>The Mountain Hollow Vault - Geocache Field Puzzle</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #080c08;
+      color: #94d2bd;
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+    }
+
+    #webgl-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      touch-action: none;
+    }
+
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 14px) 14px env(safe-area-inset-bottom, 14px) 14px;
+    }
+
+    .hud-card {
+      background: rgba(12, 18, 12, 0.9);
+      border: 1px solid #2d4a2d;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 10px 14px;
+      border-radius: 6px;
+      pointer-events: auto;
+    }
+
+    #header-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 860px;
+      margin: 0 auto;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    .title-tag {
+      font-size: 15px;
+      font-weight: bold;
+      color: #e9c46a;
+      letter-spacing: 1px;
+    }
+    .status-tag {
+      font-size: 12px;
+      color: #52b788;
+      margin-top: 2px;
+    }
+
+    #hint-box {
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 13px;
+      color: #d8f3dc;
+      line-height: 1.4;
+      border-color: #52b788;
+      position: relative;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    #hint-box.dismissed {
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+    }
+
+    .hint-close {
+      position: absolute;
+      top: 2px;
+      right: 6px;
+      color: #52b788;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    #story-drawer {
+      max-width: 520px;
+      margin: 0 auto 8px auto;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #b7e4c7;
+      border-color: #406c40;
+    }
+
+    #footer-instructions {
+      text-align: center;
+      font-size: 11px;
+      color: #74c69d;
+      letter-spacing: 0.5px;
+      background: rgba(8, 12, 8, 0.7);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 0 auto;
+      max-width: 90%;
+    }
+
+    /* Modal Styling */
+    .game-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100vw - 32px);
+      max-width: 480px;
+      background: #0d140d;
+      border: 2px solid #e9c46a;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      pointer-events: auto;
+      z-index: 100;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .game-modal h2 {
+      color: #e9c46a;
+      font-size: 18px;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .coord-display {
+      background: #162416;
+      border: 1px solid #52b788;
+      padding: 10px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: bold;
+      color: #ee9b00;
+      margin: 12px 0;
+      letter-spacing: 1px;
+    }
+
+    .loot-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #111a11;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #2d4a2d;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #d8f3dc;
+    }
+    .loot-tag {
+      font-size: 10px;
+      background: #2d4a2d;
+      color: #e9c46a;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: #2d4a2d;
+      color: #d8f3dc;
+      border: none;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 10px;
+      border-radius: 4px;
+      touch-action: manipulation;
+      transition: 0.2s background;
+    }
+    .btn:active { background: #406c40; }
+    .btn-gold { background: #9c773a; color: #fff; }
+    .btn-gold:active { background: #c5a028; }
+
+    input[type="text"] {
+      width: 100%;
+      background: #080c08;
+      border: 1px solid #52b788;
+      color: #e9c46a;
+      font-family: inherit;
+      padding: 8px;
+      font-size: 15px;
+      border-radius: 4px;
+      margin-top: 6px;
+      outline: none;
+    }
+
+    @media (max-width: 480px) {
+      #header-hud {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <div id="webgl-container"></div>
+
+  <div id="ui-overlay">
+    <div id="header-hud" class="hud-card">
+      <div>
+        <div class="title-tag">GC8X9VT - THE HOLLOW ROCK VAULT</div>
+        <div class="status-tag" id="vault-status">SOLENOID ENGAGED [TUMBLERS LOCKED]</div>
+      </div>
+      <div style="color: #74c69d;" id="timer-display">STOPWATCH: 00:00</div>
+    </div>
+
+    <div>
+      <div id="story-drawer" class="hud-card">
+        <strong>LOG ENTRY #1:</strong> <em>"Found bolted inside a hollowed cedar tree. An eccentric trail engineer left three geometric symbols on the faceplate (▲, ■, ●) to deter muggles. The field override key is stamped on the underside."</em>
+      </div>
+
+      <div id="hint-box" class="hud-card">
+        <span class="hint-close" onclick="dismissHint()">×</span>
+        Drag to orbit underneath. Match the symbols (▲, ■, ●) to dial digits.
+      </div>
+    </div>
+
+    <div id="footer-instructions">
+      [1-Finger Drag] Orbit | [Pinch] Zoom | [Tap Dials & Lever] Interact
+    </div>
+  </div>
+
+  <!-- Final Inspection & Log Modal -->
+  <div id="dossier-modal" class="game-modal">
+    <h2>VAULT BREACH CONFIRMED!</h2>
+    <p style="color: #b7e4c7; font-size: 12px; line-height: 1.4;">
+      The solenoid released and the spring-loaded seal popped. You unlocked the physical final coordinates:
+    </p>
+    <div class="coord-display" id="final-coords">N 41° 44.892 W 111° 49.340</div>
+
+    <h3 style="color: #e9c46a; font-size: 14px; margin: 12px 0 6px 0;">CACHE INVENTORY / SWAG:</h3>
+    <div class="loot-item">
+      <span>🪪</span>
+      <div>
+        <strong>Trackable Travel Bug:</strong> Mountain Climber Dog Tag
+        <div class="loot-tag">TRACKING CODE: TB7VAULT</div>
+      </div>
+    </div>
+    <div class="loot-item">
+      <span>🪙</span>
+      <div>
+        <strong>Signature Geocoin:</strong> 2026 Bear River Cache Round
+        <div class="loot-tag">SWAG - TRADE EQUAL OR UP</div>
+      </div>
+    </div>
+    <div class="loot-item">
+      <span>🪵</span>
+      <div>
+        <strong>Wooden Nickel:</strong> "FTF or Bust" Trail Token
+      </div>
+    </div>
+
+    <h3 style="color: #e9c46a; font-size: 14px; margin: 12px 0 4px 0;">OFFICIAL LOGBOOK (LINE 1):</h3>
+    <input type="text" id="cacher-name" placeholder="Enter your geocaching handle..." />
+    <button class="btn btn-gold" onclick="signLogbook()">STAMP LOGBOOK & CLAIM FTF</button>
+    <button class="btn" onclick="copyStats()">COPY SOLVE SUMMARY</button>
+    <button class="btn" style="background:#1b261b;margin-top:6px;" onclick="closeDossier()">CONTINUE INSPECTING</button>
+  </div>
+
+<script>
+// -------------------------------------------------------------
+// DYNAMIC RANDOMIZED SOLUTION & FIELD TIMER
+// -------------------------------------------------------------
+const targetSolution = [
+  Math.floor(Math.random() * 10),
+  Math.floor(Math.random() * 10),
+  Math.floor(Math.random() * 10)
+];
+const tumblerSymbols = ['▲', '■', '●'];
+
+let startTime = Date.now();
+let solveTimeStr = "";
+let timerActive = true;
+
+setInterval(() => {
+  if (!timerActive) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('timer-display').textContent = `STOPWATCH: ${m}:${s}`;
+}, 1000);
+
+// -------------------------------------------------------------
+// WEB AUDIO & MOBILE HAPTIC FEEDBACK
+// -------------------------------------------------------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function triggerHaptic(duration = 15) {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(duration); } catch(e) {}
+  }
+}
+
+function unlockAudioContext() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+window.addEventListener('pointerdown', unlockAudioContext, { once: true });
+
+function playTumblerRatchet(pitch = 560) {
+  try {
+    unlockAudioContext();
+    triggerHaptic(12);
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.35, t + 0.045);
+
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.045);
+  } catch(e) {}
+}
+
+function playSolenoidThud() {
+  try {
+    unlockAudioContext();
+    triggerHaptic(40);
+    const t = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(130, t);
+    osc1.frequency.exponentialRampToValueAtTime(30, t + 0.18);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(75, t);
+    osc2.frequency.exponentialRampToValueAtTime(20, t + 0.25);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + 0.25);
+    osc2.stop(t + 0.25);
+  } catch(e) {}
+}
+
+function playSpringPop() {
+  try {
+    unlockAudioContext();
+    triggerHaptic([20, 40, 20]);
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(340, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.16);
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  } catch(e) {}
+}
+
+// -------------------------------------------------------------
+// THREE.JS SCENE SETUP
+// -------------------------------------------------------------
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c130d);
+scene.fog = new THREE.FogExp2(0x0c130d, 0.04);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 3.2, 5.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2.4;
+controls.maxDistance = 8.5;
+controls.maxPolarAngle = Math.PI / 2 + 0.25;
+
+// Hint Dismissal
+const hintBox = document.getElementById('hint-box');
+let hintDismissed = false;
+function dismissHint() {
+  if (!hintDismissed) {
+    hintDismissed = true;
+    hintBox.classList.add('dismissed');
+  }
+}
+controls.addEventListener('start', dismissHint);
+
+// -------------------------------------------------------------
+// LIGHTING
+// -------------------------------------------------------------
+const ambientLight = new THREE.AmbientLight(0xd8f3dc, 0.45);
+scene.add(ambientLight);
+
+const keyLight = new THREE.SpotLight(0xffeedd, 1.8);
+keyLight.position.set(4, 7, 5);
+keyLight.angle = Math.PI / 4;
+keyLight.penumbra = 0.5;
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 1024;
+keyLight.shadow.mapSize.height = 1024;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x52b788, 0.85);
+rimLight.position.set(-4, 3, -3);
+scene.add(rimLight);
+
+// Stand (Cedar Stump)
+const stumpGeo = new THREE.CylinderGeometry(2.4, 2.7, 3, 24);
+const stumpMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9, metalness: 0.05 });
+const stump = new THREE.Mesh(stumpGeo, stumpMat);
+stump.position.y = -2.1;
+stump.receiveShadow = true;
+scene.add(stump);
+
+// -------------------------------------------------------------
+// CONTAINER ASSEMBLY
+// -------------------------------------------------------------
+const vaultGroup = new THREE.Group();
+scene.add(vaultGroup);
+
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x243324, roughness: 0.4, metalness: 0.75 });
+const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.9 });
+const steelMat = new THREE.MeshStandardMaterial({ color: 0x8d99ae, roughness: 0.35, metalness: 0.85 });
+const interiorMat = new THREE.MeshStandardMaterial({ color: 0x121712, roughness: 0.8, metalness: 0.2 });
+
+// Vault Base
+const baseGeo = new THREE.BoxGeometry(2.4, 1.4, 1.8);
+const baseMesh = new THREE.Mesh(baseGeo, metalMat);
+baseMesh.castShadow = true;
+baseMesh.receiveShadow = true;
+vaultGroup.add(baseMesh);
+
+// Interior Cavity
+const cavityGeo = new THREE.BoxGeometry(2.1, 1.2, 1.5);
+const cavityMesh = new THREE.Mesh(cavityGeo, interiorMat);
+cavityMesh.position.y = 0.15;
+vaultGroup.add(cavityMesh);
+
+// -------------------------------------------------------------
+// PROCEDURAL TEXTURE: DYNAMIC RANDOMIZED CIPHER PLATE
+// -------------------------------------------------------------
+function createDynamicUnderbellyTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#182418';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = '#2d422d';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(16, 16, 480, 480);
+
+  ctx.fillStyle = '#e9c46a';
+  ctx.font = 'bold 30px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GC8X9VT FIELD VAULT', 256, 110);
+
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = '#74c69d';
+  ctx.fillText('CIPHER OVERRIDE CALIBRATION:', 256, 170);
+
+  ctx.font = 'bold 38px monospace';
+  ctx.fillStyle = '#ee9b00';
+  ctx.fillText(`▲ = [ ${targetSolution[0]} ]`, 256, 245);
+  ctx.fillText(`■ = [ ${targetSolution[1]} ]`, 256, 315);
+  ctx.fillText(`● = [ ${targetSolution[2]} ]`, 256, 385);
+
+  ctx.font = '16px monospace';
+  ctx.fillStyle = '#adb5bd';
+  ctx.fillText('ALIGN SYMBOLS ON FACEPLATE TO DEPLOY', 256, 450);
+
+  return new THREE.CanvasTexture(c);
+}
+
+const underPlateGeo = new THREE.PlaneGeometry(2.1, 1.5);
+const underPlateMat = new THREE.MeshBasicMaterial({ map: createDynamicUnderbellyTexture() });
+const underPlateMesh = new THREE.Mesh(underPlateGeo, underPlateMat);
+underPlateMesh.position.set(0, -0.705, 0);
+underPlateMesh.rotation.x = Math.PI / 2;
+vaultGroup.add(underPlateMesh);
+
+// -------------------------------------------------------------
+// SYMBOL EMBOSSED TUMBLERS
+// -------------------------------------------------------------
+const tumblers = [];
+const tumblerValues = [0, 0, 0];
+let solenoidTripped = false;
+let latchPopped = false;
+
+function createDigitTexture(num, sym) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#c5a028';
+  ctx.fillRect(0, 0, 128, 128);
+
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(sym, 64, 30);
+
+  ctx.font = 'bold 64px monospace';
+  ctx.fillText(num, 64, 92);
+  return new THREE.CanvasTexture(c);
+}
+
+const tumblerXPositions = [-0.65, 0, 0.65];
+for (let i = 0; i < 3; i++) {
+  const dialGroup = new THREE.Group();
+  dialGroup.position.set(tumblerXPositions[i], -0.05, 0.94);
+
+  const dialGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.12, 20);
+  const dialMesh = new THREE.Mesh(dialGeo, brassMat);
+  dialMesh.rotation.x = Math.PI / 2;
+  dialGroup.add(dialMesh);
+
+  const capGeo = new THREE.CircleGeometry(0.18, 20);
+  const capMat = new THREE.MeshBasicMaterial({ map: createDigitTexture(0, tumblerSymbols[i]) });
+  const capMesh = new THREE.Mesh(capGeo, capMat);
+  capMesh.position.z = 0.065;
+  dialGroup.add(capMesh);
+
+  // Enlarged tap hitbox
+  const hitTargetGeo = new THREE.BoxGeometry(0.48, 0.48, 0.35);
+  const hitTargetMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitTarget = new THREE.Mesh(hitTargetGeo, hitTargetMat);
+  hitTarget.userData = { isTapTarget: true, index: i };
+  dialGroup.add(hitTarget);
+
+  dialGroup.userData = { index: i, capMat: capMat };
+  vaultGroup.add(dialGroup);
+  tumblers.push(dialGroup);
+}
+
+// -------------------------------------------------------------
+// FRONT MECHANICAL RELEASE LATCH
+// -------------------------------------------------------------
+const latchGroup = new THREE.Group();
+latchGroup.position.set(0, 0.55, 0.96);
+
+const latchBodyGeo = new THREE.BoxGeometry(0.3, 0.2, 0.08);
+const latchBody = new THREE.Mesh(latchBodyGeo, steelMat);
+latchGroup.add(latchBody);
+
+const leverGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 12);
+const leverMesh = new THREE.Mesh(leverGeo, brassMat);
+leverMesh.position.set(0, -0.15, 0.04);
+latchGroup.add(leverMesh);
+
+// Clickable target for lever
+const latchHitGeo = new THREE.BoxGeometry(0.5, 0.5, 0.3);
+const latchHit = new THREE.Mesh(latchHitGeo, new THREE.MeshBasicMaterial({ visible: false }));
+latchHit.userData = { isLatch: true };
+latchGroup.add(latchHit);
+
+vaultGroup.add(latchGroup);
+
+// -------------------------------------------------------------
+// HINGED VAULT LID
+// -------------------------------------------------------------
+const lidPivot = new THREE.Group();
+lidPivot.position.set(0, 0.7, -0.9);
+vaultGroup.add(lidPivot);
+
+const lidMeshGeo = new THREE.BoxGeometry(2.44, 0.2, 1.84);
+const lidMesh = new THREE.Mesh(lidMeshGeo, metalMat);
+lidMesh.position.set(0, 0.1, 0.9);
+lidMesh.castShadow = true;
+lidPivot.add(lidMesh);
+
+const handleGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 12);
+const handleMesh = new THREE.Mesh(handleGeo, brassMat);
+handleMesh.position.set(0, 0.25, 0.9);
+handleMesh.rotation.z = Math.PI / 2;
+lidPivot.add(handleMesh);
+
+// -------------------------------------------------------------
+// INTERNAL CACHE SWAG & LOGBOOK
+// -------------------------------------------------------------
+const swagGroup = new THREE.Group();
+swagGroup.position.set(0, 0.05, 0);
+
+// Logbook Roll
+const logGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.3, 16);
+const logMat = new THREE.MeshStandardMaterial({ color: 0xede0c8, roughness: 0.9 });
+const logMesh = new THREE.Mesh(logGeo, logMat);
+logMesh.position.set(-0.5, -0.02, 0.2);
+logMesh.rotation.z = Math.PI / 2;
+swagGroup.add(logMesh);
+
+// Signature Geocoin
+const coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.04, 24);
+const coinMesh = new THREE.Mesh(coinGeo, brassMat);
+coinMesh.position.set(0.4, 0.02, -0.2);
+coinMesh.castShadow = true;
+swagGroup.add(coinMesh);
+
+// Dog Tag
+const tagGeo = new THREE.BoxGeometry(0.4, 0.02, 0.65);
+const tagMesh = new THREE.Mesh(tagGeo, steelMat);
+tagMesh.position.set(0.3, -0.04, 0.35);
+tagMesh.rotation.y = 0.3;
+swagGroup.add(tagMesh);
+
+// Clickable target for inside items
+const swagHit = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 1.2), new THREE.MeshBasicMaterial({ visible: false }));
+swagHit.userData = { isSwag: true };
+swagGroup.add(swagHit);
+
+vaultGroup.add(swagGroup);
+
+// -------------------------------------------------------------
+// TOUCH & CLICK RAYCASTING
+// -------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const touchCoord = new THREE.Vector2();
+let pointerDownPos = { x: 0, y: 0 };
+
+window.addEventListener('pointerdown', (e) => {
+  pointerDownPos = { x: e.clientX, y: e.clientY };
+  dismissHint();
+});
+
+window.addEventListener('pointerup', (e) => {
+  const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+  if (moveDist > 10) return;
+
+  touchCoord.x = (e.clientX / window.innerWidth) * 2 - 1;
+  touchCoord.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(touchCoord, camera);
+
+  // 1. Check Tumbler Clicks (Only before solenoid trips)
+  if (!solenoidTripped) {
+    for (let i = 0; i < tumblers.length; i++) {
+      const hits = raycaster.intersectObjects(tumblers[i].children);
+      if (hits.length > 0) {
+        cycleTumbler(i);
+        return;
+      }
+    }
+  }
+
+  // 2. Check Front Latch Click (After solenoid trips)
+  if (solenoidTripped && !latchPopped) {
+    const latchHits = raycaster.intersectObjects(latchGroup.children);
+    if (latchHits.length > 0) {
+      popLatch();
+      return;
+    }
+  }
+
+  // 3. Check Swag / Log Tap (After lid opens)
+  if (latchPopped) {
+    const swagHits = raycaster.intersectObjects(swagGroup.children);
+    if (swagHits.length > 0) {
+      openDossier();
+    }
+  }
+});
+
+function cycleTumbler(idx) {
+  tumblerValues[idx] = (tumblerValues[idx] + 1) % 10;
+  tumblers[idx].userData.capMat.map = createDigitTexture(tumblerValues[idx], tumblerSymbols[idx]);
+  tumblers[idx].rotation.z += Math.PI / 5;
+  playTumblerRatchet(480 + tumblerValues[idx] * 40);
+
+  // Check Combination Match
+  if (
+    tumblerValues[0] === targetSolution[0] &&
+    tumblerValues[1] === targetSolution[1] &&
+    tumblerValues[2] === targetSolution[2]
+  ) {
+    tripSolenoid();
+  }
+}
+
+function tripSolenoid() {
+  solenoidTripped = true;
+  document.getElementById('vault-status').textContent = 'SOLENOID DISENGAGED [TAP FRONT LEVER]';
+  document.getElementById('vault-status').style.color = '#ee9b00';
+
+  hintBox.innerHTML = '<span style="color:#ee9b00;font-weight:bold;">SOLENOID DISENGAGED!</span> Tap the front brass latch lever to pop the seal.';
+  hintBox.classList.remove('dismissed');
+
+  playSolenoidThud();
+}
+
+function popLatch() {
+  latchPopped = true;
+  timerActive = false;
+  solveTimeStr = document.getElementById('timer-display').textContent.replace('STOPWATCH: ', '');
+
+  document.getElementById('vault-status').textContent = 'ACCESS GRANTED [FTF UNLOCKED]';
+  document.getElementById('vault-status').style.color = '#e9c46a';
+
+  hintBox.innerHTML = '<span style="color:#e9c46a;font-weight:bold;">VAULT BREACHED!</span> Tap the logbook and swag inside to sign.';
+  hintBox.classList.remove('dismissed');
+
+  playSpringPop();
+}
+
+function openDossier() {
+  document.getElementById('dossier-modal').style.display = 'block';
+  playTumblerRatchet(780);
+}
+
+function closeDossier() {
+  document.getElementById('dossier-modal').style.display = 'none';
+}
+
+function signLogbook() {
+  const name = document.getElementById('cacher-name').value.trim() || 'Anonymous Cacher';
+  alert(`Line 1 Claimed!\n\nFTF: ${name}\nTime: ${solveTimeStr}\nCache: GC8X9VT The Hollow Rock Vault\n\nCoordinates logged.`);
+}
+
+function copyStats() {
+  const text = `🏆 GC8X9VT - Hollow Rock Vault Solved!\n⏱️ Solve Time: ${solveTimeStr}\n📍 Coordinates: N 41° 44.892 W 111° 49.340\n🔓 Field Override Verified!`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Solve summary copied to clipboard! Text it to your caching crew.");
+  });
+}
+
+// -------------------------------------------------------------
+// ANIMATION LOOP
+// -------------------------------------------------------------
+let lidOpenAngle = 0;
+const targetLidAngle = -Math.PI * 0.65;
+let latchSlide = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  // Smooth Latch Drop Animation
+  if (latchPopped && latchSlide < 0.25) {
+    latchSlide += 0.03;
+    latchGroup.position.y = 0.55 - latchSlide;
+    latchGroup.rotation.x = latchSlide * 1.5;
+  }
+
+  // Smooth Lid Opening Animation
+  if (latchPopped && lidOpenAngle > targetLidAngle) {
+    lidOpenAngle -= 0.04;
+    lidPivot.rotation.x = lidOpenAngle;
+  }
+
+  // Floating Geocoin Animation once open
+  if (latchPopped) {
+    swagGroup.position.y = 0.05 + Math.sin(Date.now() * 0.003) * 0.02;
+    coinMesh.rotation.y += 0.015;
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onWindowResize);
+window.addEventListener('orientationchange', () => setTimeout(onWindowResize, 100));
+
+animate();
+</script>
+</body>
+</html>
