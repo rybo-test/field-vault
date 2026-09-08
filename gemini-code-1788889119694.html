@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>The Mountain Hollow Vault - Field Puzzle</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #060907;
+      color: #94d2bd;
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+    }
+
+    #webgl-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      touch-action: none;
+    }
+
+    /* Top-Center Clustered Toolbar */
+    #top-toolbar-container {
+      position: absolute;
+      top: env(safe-area-inset-top, 14px);
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 0 10px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .toolbar-strip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      background: rgba(10, 16, 10, 0.85);
+      border: 1px solid rgba(82, 183, 136, 0.35);
+      padding: 6px 10px;
+      border-radius: 30px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      pointer-events: auto;
+      max-width: 95vw;
+    }
+
+    .pill-btn {
+      background: rgba(18, 28, 18, 0.85);
+      border: 1px solid rgba(82, 183, 136, 0.4);
+      color: #d8f3dc;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .pill-btn:active {
+      background: rgba(45, 74, 45, 0.95);
+      border-color: #52b788;
+      transform: scale(0.95);
+    }
+
+    .pill-badge {
+      background: rgba(14, 22, 14, 0.85);
+      border: 1px solid rgba(82, 183, 136, 0.25);
+      color: #74c69d;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Context Toast */
+    #toast-msg {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(10, 16, 10, 0.94);
+      border: 1px solid #e9c46a;
+      color: #e9c46a;
+      font-size: 12px;
+      padding: 8px 18px;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.85);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      white-space: nowrap;
+      max-width: 90%;
+      text-align: center;
+      z-index: 20;
+    }
+    #toast-msg.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Slide-Over Dossier Sheet */
+    #dossier-drawer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(4, 7, 4, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      pointer-events: auto;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 50;
+      padding: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    #dossier-drawer.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .drawer-card {
+      background: #0e160e;
+      border: 1px solid #52b788;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .drawer-card h3 {
+      color: #e9c46a;
+      font-size: 17px;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(82, 183, 136, 0.3);
+      padding-bottom: 6px;
+    }
+
+    .drawer-card p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d8f3dc;
+      margin-bottom: 10px;
+    }
+
+    /* Generic Detail Modal */
+    .game-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100vw - 32px);
+      max-width: 440px;
+      background: #0d140d;
+      border: 2px solid #e9c46a;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      pointer-events: auto;
+      z-index: 100;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .game-modal h2 {
+      color: #e9c46a;
+      font-size: 18px;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .coord-display {
+      background: #162416;
+      border: 1px solid #52b788;
+      padding: 12px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ee9b00;
+      margin: 12px 0;
+      letter-spacing: 1px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: #2d4a2d;
+      color: #d8f3dc;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 10px;
+      border-radius: 4px;
+      touch-action: manipulation;
+    }
+    .btn:active { background: #406c40; }
+    .btn-gold { background: #9c773a; color: #fff; }
+    .btn-gold:active { background: #c5a028; }
+
+    input[type="text"] {
+      width: 100%;
+      background: #080c08;
+      border: 1px solid #52b788;
+      color: #e9c46a;
+      font-family: inherit;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 4px;
+      margin-top: 6px;
+      outline: none;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="webgl-container"></div>
+
+  <!-- Top-Center Clustered Toolbar -->
+  <div id="top-toolbar-container">
+    <div class="toolbar-strip">
+      <button class="pill-btn" onclick="openDrawer()">
+        <span>ℹ️</span> <span>FIELD LOG</span>
+      </button>
+      <div class="pill-badge" id="timer-display">⏱ 00:00</div>
+      <div class="pill-badge" id="vault-status" style="color:#52b788;">🔒 LOCKED</div>
+      <button class="pill-btn" onclick="requestResetOrientation()">
+        <span>↺</span> <span>ALIGN</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="toast-msg">Swipe up to inspect the underside</div>
+
+  <!-- Field Brief Drawer -->
+  <div id="dossier-drawer" onclick="closeDrawer(event)">
+    <div class="drawer-card" onclick="event.stopPropagation()">
+      <h3>GC8X9VT // FIELD ARCHIVE</h3>
+      <p>
+        <strong>INTEL:</strong> Bolted to an elevated mountain outcrop. The cache hider locked this titanium vault with a 3-symbol cipher (▲, ■, ●) and engraved the calibration override directly onto the bottom baseplate.
+      </p>
+      <p style="color: #e9c46a;">
+        <strong>FIELD MANUAL:</strong>
+        <br>1. Swipe upward to inspect the engraved bottom plate.
+        <br>2. Note which numbers calibrate with (▲, ■, ●).
+        <br>3. Tap [ALIGN] to face the front dials.
+        <br>4. Tap each brass tumbler to set the code.
+        <br>5. Tap the front latch lever to pop the lid.
+        <br>6. Tap any item inside the container to inspect it!
+      </p>
+      <button class="btn" onclick="closeDrawer()">RETURN TO ARTIFACT</button>
+    </div>
+  </div>
+
+  <!-- 1. Logsheet Modal -->
+  <div id="logsheet-modal" class="game-modal">
+    <h2>OFFICIAL LOGSHEET</h2>
+    <p style="color: #b7e4c7; font-size: 12px; line-height: 1.4;">
+      You unrolled the weather-sealed parchment logbook. The true ground coordinates are inscribed at the top:
+    </p>
+    <div class="coord-display">N 47° 34.222 W 053° 33.351</div>
+
+    <h4 style="color: #e9c46a; font-size: 13px; margin: 10px 0 4px 0;">CLAIM LINE 1 (FTF):</h4>
+    <input type="text" id="cacher-name" placeholder="Enter your geocaching handle..." />
+    <button class="btn btn-gold" onclick="signLogbook()">STAMP LOGBOOK & CLAIM FTF</button>
+    <button class="btn" onclick="copyStats()">COPY SOLVE SUMMARY</button>
+    <button class="btn" style="background:#1b261b;margin-top:6px;" onclick="closeAllModals()">PUT BACK IN CONTAINER</button>
+  </div>
+
+  <!-- 2. Travel Bug Modal -->
+  <div id="tb-modal" class="game-modal">
+    <h2>TRACKABLE TRAVEL BUG</h2>
+    <div style="text-align:center; font-size: 40px; margin: 8px 0;">🪪</div>
+    <div class="coord-display" style="font-size:16px; color:#52b788;">TRACKING CODE: TB7VAULT</div>
+    <p style="color: #d8f3dc; font-size: 13px; line-height: 1.4;">
+      <strong>Name:</strong> Alpine Peak Mountaineer Dog Tag<br>
+      <strong>Mission:</strong> <em>"Travel from high alpine peak to high alpine peak across the Rockies. Do not keep me—move me to another cache!"</em>
+    </p>
+    <button class="btn" onclick="closeAllModals()">PUT BACK IN CONTAINER</button>
+  </div>
+
+  <!-- 3. Geocoin Modal -->
+  <div id="coin-modal" class="game-modal">
+    <h2>SIGNATURE GEOCOIN</h2>
+    <div style="text-align:center; font-size: 40px; margin: 8px 0;">🪙</div>
+    <p style="color: #d8f3dc; font-size: 13px; line-height: 1.4;">
+      <strong>Item:</strong> 2026 Bear River Cache Round<br>
+      <strong>Finish:</strong> Heavy Antique Brass (2.0 oz)<br>
+      <strong>Status:</strong> Swag Item — Trade equal or trade up!
+    </p>
+    <button class="btn" onclick="closeAllModals()">PUT BACK IN CONTAINER</button>
+  </div>
+
+  <!-- 4. Wooden Nickel Modal -->
+  <div id="nickel-modal" class="game-modal">
+    <h2>WOODEN NICKEL</h2>
+    <div style="text-align:center; font-size: 40px; margin: 8px 0;">🪵</div>
+    <p style="color: #d8f3dc; font-size: 13px; line-height: 1.4;">
+      <strong>Item:</strong> "FTF or Bust" Trail Token<br>
+      <strong>Engraving:</strong> Stamped by local caching team.<br>
+      <strong>Status:</strong> Swag Item — Free to take as a trail souvenir.
+    </p>
+    <button class="btn" onclick="closeAllModals()">PUT BACK IN CONTAINER</button>
+  </div>
+
+<script>
+// -------------------------------------------------------------
+// DYNAMIC RANDOMIZED SOLUTION & FIELD TIMER
+// -------------------------------------------------------------
+const targetSolution = [
+  Math.floor(Math.random() * 10),
+  Math.floor(Math.random() * 10),
+  Math.floor(Math.random() * 10)
+];
+const tumblerSymbols = ['▲', '■', '●'];
+
+let startTime = Date.now();
+let solveTimeStr = "";
+let timerActive = true;
+
+setInterval(() => {
+  if (!timerActive) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('timer-display').textContent = `⏱ ${m}:${s}`;
+}, 1000);
+
+// -------------------------------------------------------------
+// AUDIO & HAPTIC ENGINE
+// -------------------------------------------------------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function triggerHaptic(duration = 15) {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(duration); } catch(e) {}
+  }
+}
+
+function unlockAudioContext() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+window.addEventListener('pointerdown', unlockAudioContext, { once: true });
+
+function playTumblerRatchet(pitch = 560) {
+  try {
+    unlockAudioContext();
+    triggerHaptic(12);
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.35, t + 0.045);
+
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.045);
+  } catch(e) {}
+}
+
+function playSolenoidThud() {
+  try {
+    unlockAudioContext();
+    triggerHaptic(40);
+    const t = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(130, t);
+    osc1.frequency.exponentialRampToValueAtTime(30, t + 0.18);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(75, t);
+    osc2.frequency.exponentialRampToValueAtTime(20, t + 0.25);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + 0.25);
+    osc2.stop(t + 0.25);
+  } catch(e) {}
+}
+
+function playSpringPop() {
+  try {
+    unlockAudioContext();
+    triggerHaptic([20, 40, 20]);
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(340, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.16);
+
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  } catch(e) {}
+}
+
+// -------------------------------------------------------------
+// THREE.JS SCENE SETUP
+// -------------------------------------------------------------
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060907);
+
+const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 5.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xd8f3dc, 0.65);
+scene.add(ambientLight);
+
+const keyLight = new THREE.SpotLight(0xffeedd, 2.2);
+keyLight.position.set(2, 6, 4);
+keyLight.angle = Math.PI / 3;
+keyLight.penumbra = 0.6;
+keyLight.castShadow = true;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x52b788, 0.7);
+rimLight.position.set(-4, -2, -3);
+scene.add(rimLight);
+
+const underFillLight = new THREE.DirectionalLight(0x94d2bd, 1.1);
+underFillLight.position.set(0, -4, 2);
+scene.add(underFillLight);
+
+// Interior Downlight to Illuminate Cavity & Loot
+const interiorLight = new THREE.SpotLight(0xfffae0, 2.5, 5, Math.PI / 3, 0.4);
+interiorLight.position.set(0, 2.2, 0.2);
+interiorLight.target.position.set(0, -0.2, 0);
+
+// -------------------------------------------------------------
+// ARTIFACT CONTAINER (True Hollow Interior Chamber)
+// -------------------------------------------------------------
+const vaultRoot = new THREE.Group();
+vaultRoot.rotation.x = 0.18;
+scene.add(vaultRoot);
+vaultRoot.add(interiorLight);
+vaultRoot.add(interiorLight.target);
+
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x243324, roughness: 0.4, metalness: 0.75 });
+const cavityMat = new THREE.MeshStandardMaterial({ color: 0x182018, roughness: 0.7, metalness: 0.3 });
+const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.9 });
+const steelMat = new THREE.MeshStandardMaterial({ color: 0x8d99ae, roughness: 0.35, metalness: 0.85 });
+const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x9c6634, roughness: 0.7 });
+const rubberSealMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95 });
+
+// 1. Container Floor
+const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.15, 1.8), metalMat);
+floorMesh.position.y = -0.625;
+floorMesh.castShadow = true;
+floorMesh.receiveShadow = true;
+vaultRoot.add(floorMesh);
+
+// Cavity Floor Liner
+const innerFloor = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.05, 1.45), cavityMat);
+innerFloor.position.y = -0.53;
+innerFloor.receiveShadow = true;
+vaultRoot.add(innerFloor);
+
+// 2. Container Walls (Open Chamber inside)
+const wallFront = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.25, 0.15), metalMat);
+wallFront.position.set(0, 0.075, 0.825);
+wallFront.castShadow = true;
+vaultRoot.add(wallFront);
+
+const wallBack = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.25, 0.15), metalMat);
+wallBack.position.set(0, 0.075, -0.825);
+wallBack.castShadow = true;
+vaultRoot.add(wallBack);
+
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.25, 1.5), metalMat);
+wallLeft.position.set(-1.125, 0.075, 0);
+wallLeft.castShadow = true;
+vaultRoot.add(wallLeft);
+
+const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.25, 1.5), metalMat);
+wallRight.position.set(1.125, 0.075, 0);
+wallRight.castShadow = true;
+vaultRoot.add(wallRight);
+
+// 3. True Hollow Rubber Gasket Rim (4 perimeter strips, NOT a solid slab!)
+const rimF = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 0.12), rubberSealMat);
+rimF.position.set(0, 0.72, 0.825);
+vaultRoot.add(rimF);
+
+const rimB = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 0.12), rubberSealMat);
+rimB.position.set(0, 0.72, -0.825);
+vaultRoot.add(rimB);
+
+const rimL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 1.53), rubberSealMat);
+rimL.position.set(-1.125, 0.72, 0);
+vaultRoot.add(rimL);
+
+const rimR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 1.53), rubberSealMat);
+rimR.position.set(1.125, 0.72, 0);
+vaultRoot.add(rimR);
+
+// -------------------------------------------------------------
+// DYNAMIC UNDERSIDE CIPHER PLATE
+// -------------------------------------------------------------
+function createDynamicUnderbellyTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#0f180f';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = '#2d4a2d';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(14, 14, 484, 484);
+
+  ctx.fillStyle = '#e9c46a';
+  ctx.font = 'bold 30px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GC8X9VT FIELD VAULT', 256, 85);
+
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = '#74c69d';
+  ctx.fillText('CALIBRATION OVERRIDE:', 256, 145);
+
+  ctx.font = 'bold 50px monospace';
+  ctx.fillStyle = '#ee9b00';
+  ctx.fillText(`▲ = [ ${targetSolution[0]} ]`, 256, 230);
+  ctx.fillText(`■ = [ ${targetSolution[1]} ]`, 256, 310);
+  ctx.fillText(`● = [ ${targetSolution[2]} ]`, 256, 390);
+
+  ctx.font = '16px monospace';
+  ctx.fillStyle = '#94d2bd';
+  ctx.fillText('TAP [ALIGN] TO ENTER COMBINATION', 256, 460);
+
+  return new THREE.CanvasTexture(c);
+}
+
+const underPlateGeo = new THREE.PlaneGeometry(2.1, 1.5);
+const underPlateMat = new THREE.MeshBasicMaterial({ map: createDynamicUnderbellyTexture() });
+const underPlateMesh = new THREE.Mesh(underPlateGeo, underPlateMat);
+underPlateMesh.position.set(0, -0.705, 0);
+underPlateMesh.rotation.x = Math.PI / 2;
+vaultRoot.add(underPlateMesh);
+
+// -------------------------------------------------------------
+// FRONT FACE TUMBLERS
+// -------------------------------------------------------------
+const tumblers = [];
+const tumblerValues = [0, 0, 0];
+let solenoidTripped = false;
+let latchPopped = false;
+
+function createDigitTexture(num, sym) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#c5a028';
+  ctx.fillRect(0, 0, 128, 128);
+
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(sym, 64, 30);
+
+  ctx.font = 'bold 64px monospace';
+  ctx.fillText(num, 64, 92);
+  return new THREE.CanvasTexture(c);
+}
+
+const tumblerXPositions = [-0.65, 0, 0.65];
+for (let i = 0; i < 3; i++) {
+  const dialGroup = new THREE.Group();
+  dialGroup.position.set(tumblerXPositions[i], -0.05, 0.94);
+
+  const dialMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.12, 20), brassMat);
+  dialMesh.rotation.x = Math.PI / 2;
+  dialGroup.add(dialMesh);
+
+  const capMat = new THREE.MeshBasicMaterial({ map: createDigitTexture(0, tumblerSymbols[i]) });
+  const capMesh = new THREE.Mesh(new THREE.CircleGeometry(0.18, 20), capMat);
+  capMesh.position.z = 0.065;
+  dialGroup.add(capMesh);
+
+  // Tap hitbox
+  const hitTarget = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.35), new THREE.MeshBasicMaterial({ visible: false }));
+  hitTarget.userData = { isTumbler: true, index: i };
+  dialGroup.add(hitTarget);
+
+  dialGroup.userData = { index: i, capMat: capMat };
+  vaultRoot.add(dialGroup);
+  tumblers.push(dialGroup);
+}
+
+// -------------------------------------------------------------
+// FRONT MECHANICAL LATCH
+// -------------------------------------------------------------
+const latchGroup = new THREE.Group();
+latchGroup.position.set(0, 0.55, 0.96);
+
+const latchBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.08), steelMat);
+latchGroup.add(latchBody);
+
+const leverMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 12), brassMat);
+leverMesh.position.set(0, -0.15, 0.04);
+latchGroup.add(leverMesh);
+
+const latchHit = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.35), new THREE.MeshBasicMaterial({ visible: false }));
+latchHit.userData = { isLatch: true };
+latchGroup.add(latchHit);
+
+vaultRoot.add(latchGroup);
+
+// -------------------------------------------------------------
+// HINGED LID
+// -------------------------------------------------------------
+const lidPivot = new THREE.Group();
+lidPivot.position.set(0, 0.7, -0.9);
+vaultRoot.add(lidPivot);
+
+const lidMesh = new THREE.Mesh(new THREE.BoxGeometry(2.44, 0.2, 1.84), metalMat);
+lidMesh.position.set(0, 0.1, 0.9);
+lidMesh.castShadow = true;
+lidPivot.add(lidMesh);
+
+const handleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 12), brassMat);
+handleMesh.position.set(0, 0.25, 0.9);
+handleMesh.rotation.z = Math.PI / 2;
+lidPivot.add(handleMesh);
+
+// -------------------------------------------------------------
+// PROMINENT INTERACTIVE LOOT ITEMS (ELEVATED IN OPEN CHAMBER)
+// -------------------------------------------------------------
+const lootItems = [];
+
+// 1. Rolled Linen Logbook
+const logMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.18, 0.18, 1.4, 20),
+  new THREE.MeshStandardMaterial({ color: 0xf5ecd7, roughness: 0.85 })
+);
+logMesh.position.set(-0.35, -0.1, 0.25);
+logMesh.rotation.z = Math.PI / 2;
+logMesh.castShadow = true;
+logMesh.userData = { isLoot: true, lootType: 'logbook' };
+vaultRoot.add(logMesh);
+lootItems.push(logMesh);
+
+// 2. Travel Bug Dog Tag
+const tagMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(0.48, 0.04, 0.75),
+  new THREE.MeshStandardMaterial({ color: 0xced4da, roughness: 0.2, metalness: 0.9 })
+);
+tagMesh.position.set(0.45, -0.18, 0.3);
+tagMesh.rotation.y = 0.3;
+tagMesh.castShadow = true;
+tagMesh.userData = { isLoot: true, lootType: 'tb' };
+vaultRoot.add(tagMesh);
+lootItems.push(tagMesh);
+
+// 3. Signature Brass Geocoin
+const coinMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.34, 0.34, 0.06, 28),
+  new THREE.MeshStandardMaterial({ color: 0xdaa520, roughness: 0.2, metalness: 0.95 })
+);
+coinMesh.position.set(0.5, -0.16, -0.32);
+coinMesh.castShadow = true;
+coinMesh.userData = { isLoot: true, lootType: 'coin' };
+vaultRoot.add(coinMesh);
+lootItems.push(coinMesh);
+
+// 4. Wooden Nickel
+const nickelMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.28, 0.28, 0.05, 24),
+  darkWoodMat
+);
+nickelMesh.position.set(-0.45, -0.18, -0.35);
+nickelMesh.castShadow = true;
+nickelMesh.userData = { isLoot: true, lootType: 'nickel' };
+vaultRoot.add(nickelMesh);
+lootItems.push(nickelMesh);
+
+// -------------------------------------------------------------
+// DIRECT ARTIFACT ROTATION & INERTIA
+// -------------------------------------------------------------
+let isDragging = false;
+let previousPointerPos = { x: 0, y: 0 };
+let pointerStartPos = { x: 0, y: 0 };
+let rotVelocity = { x: 0, y: 0 };
+let isResetting = false;
+const resetTargetQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.18, 0, 0, 'YXZ'));
+
+window.addEventListener('pointerdown', (e) => {
+  if (isDrawerOpen || isAnyModalOpen()) return;
+
+  isDragging = true;
+  isResetting = false;
+  rotVelocity = { x: 0, y: 0 };
+  pointerStartPos = { x: e.clientX, y: e.clientY };
+  previousPointerPos = { x: e.clientX, y: e.clientY };
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!isDragging) return;
+
+  const deltaX = e.clientX - previousPointerPos.x;
+  const deltaY = e.clientY - previousPointerPos.y;
+
+  const rotSpeed = 0.0065;
+  const deltaQuatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * rotSpeed);
+  const deltaQuatX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), deltaY * rotSpeed);
+
+  vaultRoot.quaternion.premultiply(deltaQuatY);
+  vaultRoot.quaternion.premultiply(deltaQuatX);
+
+  rotVelocity = { x: deltaX * rotSpeed, y: deltaY * rotSpeed };
+  previousPointerPos = { x: e.clientX, y: e.clientY };
+});
+
+window.addEventListener('pointerup', (e) => {
+  if (!isDragging) return;
+  isDragging = false;
+
+  const totalMove = Math.hypot(e.clientX - pointerStartPos.x, e.clientY - pointerStartPos.y);
+  if (totalMove < 8) {
+    handleTapRaycast(e.clientX, e.clientY);
+  }
+});
+
+function requestResetOrientation() {
+  isResetting = true;
+  rotVelocity = { x: 0, y: 0 };
+  showToast("Vault Face Aligned");
+}
+
+// -------------------------------------------------------------
+// TAP DISPATCHER (TUMBLERS, LATCH, DISCRETE LOOT)
+// -------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const tapCoord = new THREE.Vector2();
+
+function handleTapRaycast(clientX, clientY) {
+  tapCoord.x = (clientX / window.innerWidth) * 2 - 1;
+  tapCoord.y = -(clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(tapCoord, camera);
+
+  // 1. Tumblers
+  if (!solenoidTripped) {
+    for (let i = 0; i < tumblers.length; i++) {
+      const hits = raycaster.intersectObjects(tumblers[i].children);
+      if (hits.length > 0) {
+        cycleTumbler(i);
+        return;
+      }
+    }
+  }
+
+  // 2. Front Latch
+  if (solenoidTripped && !latchPopped) {
+    const latchHits = raycaster.intersectObjects(latchGroup.children);
+    if (latchHits.length > 0) {
+      popLatch();
+      return;
+    }
+  }
+
+  // 3. Inspect Discrete Loot Items inside the Open Container
+  if (latchPopped) {
+    const lootHits = raycaster.intersectObjects(lootItems);
+    if (lootHits.length > 0) {
+      const type = lootHits[0].object.userData.lootType;
+      openItemModal(type);
+    }
+  }
+}
+
+function cycleTumbler(idx) {
+  tumblerValues[idx] = (tumblerValues[idx] + 1) % 10;
+  tumblers[idx].userData.capMat.map = createDigitTexture(tumblerValues[idx], tumblerSymbols[idx]);
+  tumblers[idx].rotation.z += Math.PI / 5;
+  playTumblerRatchet(480 + tumblerValues[idx] * 40);
+
+  if (
+    tumblerValues[0] === targetSolution[0] &&
+    tumblerValues[1] === targetSolution[1] &&
+    tumblerValues[2] === targetSolution[2]
+  ) {
+    tripSolenoid();
+  }
+}
+
+function tripSolenoid() {
+  solenoidTripped = true;
+  document.getElementById('vault-status').textContent = '⚡ READY';
+  document.getElementById('vault-status').style.color = '#ee9b00';
+  document.getElementById('vault-status').style.borderColor = '#ee9b00';
+
+  showToast("⚡ Solenoid tripped! Tap front latch lever");
+  playSolenoidThud();
+}
+
+function popLatch() {
+  latchPopped = true;
+  timerActive = false;
+  solveTimeStr = document.getElementById('timer-display').textContent.replace('⏱ ', '');
+
+  document.getElementById('vault-status').textContent = '🎉 OPEN';
+  document.getElementById('vault-status').style.color = '#e9c46a';
+  document.getElementById('vault-status').style.borderColor = '#e9c46a';
+
+  showToast("Container unlocked! Tap any item inside");
+  playSpringPop();
+}
+
+// -------------------------------------------------------------
+// MODALS & DRAWER CONTROLS
+// -------------------------------------------------------------
+let isDrawerOpen = false;
+
+function openDrawer() {
+  isDrawerOpen = true;
+  document.getElementById('dossier-drawer').classList.add('active');
+}
+
+function closeDrawer(e) {
+  if (e) e.stopPropagation();
+  isDrawerOpen = false;
+  document.getElementById('dossier-drawer').classList.remove('active');
+}
+
+function isAnyModalOpen() {
+  return document.getElementById('logsheet-modal').style.display === 'block' ||
+         document.getElementById('tb-modal').style.display === 'block' ||
+         document.getElementById('coin-modal').style.display === 'block' ||
+         document.getElementById('nickel-modal').style.display === 'block';
+}
+
+function openItemModal(type) {
+  playTumblerRatchet(720);
+  closeAllModals();
+  if (type === 'logbook') document.getElementById('logsheet-modal').style.display = 'block';
+  else if (type === 'tb') document.getElementById('tb-modal').style.display = 'block';
+  else if (type === 'coin') document.getElementById('coin-modal').style.display = 'block';
+  else if (type === 'nickel') document.getElementById('nickel-modal').style.display = 'block';
+}
+
+function closeAllModals() {
+  document.getElementById('logsheet-modal').style.display = 'none';
+  document.getElementById('tb-modal').style.display = 'none';
+  document.getElementById('coin-modal').style.display = 'none';
+  document.getElementById('nickel-modal').style.display = 'none';
+}
+
+let toastTimeout = null;
+function showToast(msg) {
+  const toast = document.getElementById('toast-msg');
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3200);
+}
+
+function signLogbook() {
+  const name = document.getElementById('cacher-name').value.trim() || 'Anonymous Cacher';
+  alert(`Line 1 Claimed!\n\nFTF: ${name}\nTime: ${solveTimeStr}\nFinal Coords: N 47° 34.222 W 053° 33.351\n\nLogbook signed.`);
+}
+
+function copyStats() {
+  const text = `🏆 GC8X9VT - Mountain Vault Solved!\n⏱️ Time: ${solveTimeStr}\n📍 Coordinates: N 47° 34.222 W 053° 33.351\n🔓 Field Override Verified!`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Solve summary copied to clipboard! Text it to your caching crew.");
+  });
+}
+
+setTimeout(() => showToast("Swipe up to inspect the underside"), 1000);
+
+// -------------------------------------------------------------
+// ANIMATION & INERTIA ENGINE
+// -------------------------------------------------------------
+let lidOpenAngle = 0;
+const targetLidAngle = -Math.PI * 0.72; // Opens back wider (~130 deg) so chamber is fully visible
+let latchSlide = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // 1. Inertia
+  if (!isDragging && !isResetting) {
+    if (Math.abs(rotVelocity.x) > 0.0001 || Math.abs(rotVelocity.y) > 0.0001) {
+      const deltaQuatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotVelocity.x);
+      const deltaQuatX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rotVelocity.y);
+
+      vaultRoot.quaternion.premultiply(deltaQuatY);
+      vaultRoot.quaternion.premultiply(deltaQuatX);
+
+      rotVelocity.x *= 0.92;
+      rotVelocity.y *= 0.92;
+    }
+  }
+
+  // 2. Alignment Reset Lerp
+  if (isResetting) {
+    vaultRoot.quaternion.slerp(resetTargetQuat, 0.12);
+    if (vaultRoot.quaternion.angleTo(resetTargetQuat) < 0.01) {
+      vaultRoot.quaternion.copy(resetTargetQuat);
+      isResetting = false;
+    }
+  }
+
+  // 3. Latch Spring Pop
+  if (latchPopped && latchSlide < 0.25) {
+    latchSlide += 0.03;
+    latchGroup.position.y = 0.55 - latchSlide;
+    latchGroup.rotation.x = latchSlide * 1.5;
+  }
+
+  // 4. Open Hinged Lid
+  if (latchPopped && lidOpenAngle > targetLidAngle) {
+    lidOpenAngle -= 0.04;
+    lidPivot.rotation.x = lidOpenAngle;
+  }
+
+  // 5. Subtle idle float for loot items inside container
+  if (latchPopped) {
+    const hoverOffset = Math.sin(Date.now() * 0.003) * 0.02;
+    coinMesh.position.y = -0.16 + hoverOffset;
+    nickelMesh.position.y = -0.18 + hoverOffset;
+    logMesh.position.y = -0.1 + hoverOffset * 0.5;
+    coinMesh.rotation.y += 0.01;
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onWindowResize);
+window.addEventListener('orientationchange', () => setTimeout(onWindowResize, 100));
+
+animate();
+</script>
+</body>
+</html>
