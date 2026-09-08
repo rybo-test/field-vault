@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>The Room: Geocache Field Vault (Mobile Ready)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #0a0e0a;
+      color: #94d2bd;
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none; /* Disables double-tap zoom and elastic pull-to-refresh */
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+    }
+
+    #webgl-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      touch-action: none;
+    }
+
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px) 16px;
+    }
+
+    .hud-card {
+      background: rgba(14, 20, 14, 0.88);
+      border: 1px solid #2d4a2d;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 10px 14px;
+      border-radius: 6px;
+      pointer-events: auto;
+    }
+
+    #header-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    .title-tag {
+      font-size: 15px;
+      font-weight: bold;
+      color: #e9c46a;
+      letter-spacing: 1px;
+    }
+    .status-tag {
+      font-size: 12px;
+      color: #52b788;
+      margin-top: 2px;
+    }
+
+    #hint-box {
+      max-width: 440px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 13px;
+      color: #d8f3dc;
+      line-height: 1.35;
+      border-color: #52b788;
+      position: relative;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    #hint-box.dismissed {
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+    }
+
+    .hint-close {
+      position: absolute;
+      top: 2px;
+      right: 6px;
+      color: #52b788;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px;
+    }
+    .hint-close:hover { color: #e9c46a; }
+
+    #footer-instructions {
+      text-align: center;
+      font-size: 11px;
+      color: #74c69d;
+      letter-spacing: 0.5px;
+      background: rgba(10, 14, 10, 0.6);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 0 auto;
+      max-width: 90%;
+    }
+
+    /* Responsive Dossier Modal */
+    #dossier-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100vw - 36px);
+      max-width: 480px;
+      background: #0f170f;
+      border: 2px solid #e9c46a;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      pointer-events: auto;
+      z-index: 100;
+    }
+
+    #dossier-modal h2 {
+      color: #e9c46a;
+      font-size: 18px;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .coord-display {
+      background: #192719;
+      border: 1px solid #52b788;
+      padding: 12px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: bold;
+      color: #ee9b00;
+      margin: 14px 0;
+      letter-spacing: 1px;
+      word-break: break-all;
+    }
+
+    .close-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: #2d4a2d;
+      color: #d8f3dc;
+      border: none;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 14px;
+      border-radius: 4px;
+      touch-action: manipulation;
+    }
+    .close-btn:active { background: #406c40; }
+
+    @media (max-width: 480px) {
+      #header-hud {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      .coord-display {
+        font-size: 15px;
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <div id="webgl-container"></div>
+
+  <div id="ui-overlay">
+    <div id="header-hud" class="hud-card">
+      <div>
+        <div class="title-tag">TITANIUM VAULT #084</div>
+        <div class="status-tag" id="vault-status">SOLENOID LOCKED [3 TUMBLERS]</div>
+      </div>
+      <div style="color: #74c69d;">D4.5 / T2.0 FIELD PUZZLE</div>
+    </div>
+
+    <div id="hint-box" class="hud-card">
+      <span class="hint-close" onclick="dismissHint()">×</span>
+      Orbit underneath to inspect markings. Tap brass dials to cycle digits.
+    </div>
+
+    <div id="footer-instructions">
+      [1-Finger Drag] Orbit | [Pinch] Zoom | [2-Finger Drag] Pan
+    </div>
+  </div>
+
+  <div id="dossier-modal">
+    <h2>VAULT BREACH CONFIRMED</h2>
+    <p style="color: #b7e4c7; font-size: 13px; line-height: 1.4;">
+      Solenoid lock disengaged. Retrieved Master Geocoin payload:
+    </p>
+    <div class="coord-display" id="final-coords">N 41° 44.892 W 111° 49.340</div>
+    <p style="color: #74c69d; font-size: 12px; text-align: center;">
+      TRACKABLE: [TB7VAULT] - Master Field Coin
+    </p>
+    <button class="close-btn" onclick="closeDossier()">RESUME INSPECTION</button>
+  </div>
+
+<script>
+// -------------------------------------------------------------
+// MOBILE AUDIO UNLOCK & ENGINE
+// -------------------------------------------------------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function unlockAudioContext() {
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+window.addEventListener('pointerdown', unlockAudioContext, { once: true });
+window.addEventListener('touchstart', unlockAudioContext, { once: true });
+
+function playTumblerClick(pitch = 540) {
+  try {
+    unlockAudioContext();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.4, t + 0.04);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.04);
+  } catch(e) {}
+}
+
+function playSolenoidThud() {
+  try {
+    unlockAudioContext();
+    const t = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(140, t);
+    osc1.frequency.exponentialRampToValueAtTime(30, t + 0.18);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(80, t);
+    osc2.frequency.exponentialRampToValueAtTime(20, t + 0.25);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + 0.25);
+    osc2.stop(t + 0.25);
+  } catch(e) {}
+}
+
+function playHingeCreak() {
+  try {
+    unlockAudioContext();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(90, t);
+    osc.frequency.linearRampToValueAtTime(120, t + 0.3);
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.linearRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  } catch(e) {}
+}
+
+// -------------------------------------------------------------
+// THREE.JS SCENE SETUP
+// -------------------------------------------------------------
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c130d);
+scene.fog = new THREE.FogExp2(0x0c130d, 0.04);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 3.2, 5.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2.4;
+controls.maxDistance = 8.5;
+controls.maxPolarAngle = Math.PI / 2 + 0.2; // Angle under the base to see code
+
+// -------------------------------------------------------------
+// UI HINT DISMISSAL
+// -------------------------------------------------------------
+const hintBox = document.getElementById('hint-box');
+let hintDismissed = false;
+
+function dismissHint() {
+  if (!hintDismissed) {
+    hintDismissed = true;
+    hintBox.classList.add('dismissed');
+  }
+}
+
+controls.addEventListener('start', dismissHint);
+
+// -------------------------------------------------------------
+// LIGHTING
+// -------------------------------------------------------------
+const ambientLight = new THREE.AmbientLight(0xd8f3dc, 0.45);
+scene.add(ambientLight);
+
+const keyLight = new THREE.SpotLight(0xffeedd, 1.8);
+keyLight.position.set(4, 7, 5);
+keyLight.angle = Math.PI / 4;
+keyLight.penumbra = 0.5;
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 1024; // Balanced for mobile performance
+keyLight.shadow.mapSize.height = 1024;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x52b788, 0.85);
+rimLight.position.set(-4, 3, -3);
+scene.add(rimLight);
+
+// -------------------------------------------------------------
+// ENVIRONMENT (Cedar Stump)
+// -------------------------------------------------------------
+const stumpGeo = new THREE.CylinderGeometry(2.4, 2.7, 3, 24);
+const stumpMat = new THREE.MeshStandardMaterial({
+  color: 0x3d2b1f,
+  roughness: 0.9,
+  metalness: 0.05
+});
+const stump = new THREE.Mesh(stumpGeo, stumpMat);
+stump.position.y = -2.1;
+stump.receiveShadow = true;
+scene.add(stump);
+
+// -------------------------------------------------------------
+// CONTAINER ASSEMBLY
+// -------------------------------------------------------------
+const vaultGroup = new THREE.Group();
+scene.add(vaultGroup);
+
+const metalMat = new THREE.MeshStandardMaterial({
+  color: 0x243324,
+  roughness: 0.4,
+  metalness: 0.75
+});
+
+const brassMat = new THREE.MeshStandardMaterial({
+  color: 0xd4af37,
+  roughness: 0.25,
+  metalness: 0.9
+});
+
+const interiorMat = new THREE.MeshStandardMaterial({
+  color: 0x121712,
+  roughness: 0.8,
+  metalness: 0.2
+});
+
+// Vault Base
+const baseGeo = new THREE.BoxGeometry(2.4, 1.4, 1.8);
+const baseMesh = new THREE.Mesh(baseGeo, metalMat);
+baseMesh.castShadow = true;
+baseMesh.receiveShadow = true;
+vaultGroup.add(baseMesh);
+
+// Cavity
+const cavityGeo = new THREE.BoxGeometry(2.1, 1.2, 1.5);
+const cavityMesh = new THREE.Mesh(cavityGeo, interiorMat);
+cavityMesh.position.y = 0.15;
+vaultGroup.add(cavityMesh);
+
+// Underside Clue Plate
+function createUnderbellyClueTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1c281c';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = '#2d422d';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(16, 16, 480, 480);
+
+  ctx.fillStyle = '#e9c46a';
+  ctx.font = 'bold 36px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('TITANIUM VAULT #084', 256, 170);
+
+  ctx.font = 'bold 28px monospace';
+  ctx.fillStyle = '#74c69d';
+  ctx.fillText('FIELD OVERRIDE COMBINATION:', 256, 250);
+
+  ctx.font = 'bold 64px monospace';
+  ctx.fillStyle = '#ee9b00';
+  ctx.fillText('4 - 7 - 1', 256, 350);
+
+  return new THREE.CanvasTexture(c);
+}
+
+const underPlateGeo = new THREE.PlaneGeometry(2.1, 1.5);
+const underPlateMat = new THREE.MeshBasicMaterial({ map: createUnderbellyClueTexture() });
+const underPlateMesh = new THREE.Mesh(underPlateGeo, underPlateMat);
+underPlateMesh.position.set(0, -0.705, 0);
+underPlateMesh.rotation.x = Math.PI / 2;
+vaultGroup.add(underPlateMesh);
+
+// -------------------------------------------------------------
+// TUMBLERS & EXPANDED MOBILE HITBOXES
+// -------------------------------------------------------------
+const tumblers = [];
+const tumblerValues = [0, 0, 0];
+const targetSolution = [4, 7, 1];
+let puzzleSolved = false;
+
+function createDigitTexture(num) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#c5a028';
+  ctx.fillRect(0, 0, 128, 128);
+
+  ctx.fillStyle = '#111111';
+  ctx.font = 'bold 84px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(num, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+const tumblerXPositions = [-0.6, 0, 0.6];
+for (let i = 0; i < 3; i++) {
+  const dialGroup = new THREE.Group();
+  dialGroup.position.set(tumblerXPositions[i], -0.05, 0.94);
+
+  const dialGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.12, 20);
+  const dialMesh = new THREE.Mesh(dialGeo, brassMat);
+  dialMesh.rotation.x = Math.PI / 2;
+  dialGroup.add(dialMesh);
+
+  // Face cap displaying number
+  const capGeo = new THREE.CircleGeometry(0.18, 20);
+  const capMat = new THREE.MeshBasicMaterial({ map: createDigitTexture(0) });
+  const capMesh = new THREE.Mesh(capGeo, capMat);
+  capMesh.position.z = 0.065;
+  dialGroup.add(capMesh);
+
+  // Invisible enlarged tap target for mobile fingers
+  const hitTargetGeo = new THREE.BoxGeometry(0.5, 0.5, 0.35);
+  const hitTargetMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitTarget = new THREE.Mesh(hitTargetGeo, hitTargetMat);
+  hitTarget.userData = { isTapTarget: true, index: i };
+  dialGroup.add(hitTarget);
+
+  dialGroup.userData = { index: i, capMat: capMat };
+  vaultGroup.add(dialGroup);
+  tumblers.push(dialGroup);
+}
+
+// -------------------------------------------------------------
+// HINGED VAULT LID
+// -------------------------------------------------------------
+const lidPivot = new THREE.Group();
+lidPivot.position.set(0, 0.7, -0.9);
+vaultGroup.add(lidPivot);
+
+const lidMeshGeo = new THREE.BoxGeometry(2.44, 0.2, 1.84);
+const lidMesh = new THREE.Mesh(lidMeshGeo, metalMat);
+lidMesh.position.set(0, 0.1, 0.9);
+lidMesh.castShadow = true;
+lidPivot.add(lidMesh);
+
+const handleGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 12);
+const handleMesh = new THREE.Mesh(handleGeo, brassMat);
+handleMesh.position.set(0, 0.25, 0.9);
+handleMesh.rotation.z = Math.PI / 2;
+lidPivot.add(handleMesh);
+
+// -------------------------------------------------------------
+// INTERNAL COIN & SCROLL
+// -------------------------------------------------------------
+const coinGroup = new THREE.Group();
+coinGroup.position.set(0, 0.05, 0);
+
+const coinGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.04, 24);
+const coinMesh = new THREE.Mesh(coinGeo, brassMat);
+coinMesh.castShadow = true;
+coinGroup.add(coinMesh);
+
+const paperGeo = new THREE.BoxGeometry(1.4, 0.06, 0.9);
+const paperMat = new THREE.MeshStandardMaterial({ color: 0xe8dbb8, roughness: 0.95 });
+const paperMesh = new THREE.Mesh(paperGeo, paperMat);
+paperMesh.position.set(0, -0.04, 0);
+coinGroup.add(paperMesh);
+
+vaultGroup.add(coinGroup);
+
+// -------------------------------------------------------------
+// MOBILE TOUCH & RAYCAST INTERACTION
+// -------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const touchCoord = new THREE.Vector2();
+let pointerDownPos = { x: 0, y: 0 };
+
+window.addEventListener('pointerdown', (e) => {
+  pointerDownPos = { x: e.clientX, y: e.clientY };
+  dismissHint();
+});
+
+window.addEventListener('pointerup', (e) => {
+  // Prevent tap trigger if user was dragging/orbiting the camera
+  const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+  if (moveDist > 10) return;
+
+  touchCoord.x = (e.clientX / window.innerWidth) * 2 - 1;
+  touchCoord.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(touchCoord, camera);
+
+  // Check clicks on tumblers
+  for (let i = 0; i < tumblers.length; i++) {
+    const hits = raycaster.intersectObjects(tumblers[i].children);
+    if (hits.length > 0 && !puzzleSolved) {
+      cycleTumbler(i);
+      return;
+    }
+  }
+
+  // Check tap on coin when vault is open
+  if (puzzleSolved) {
+    const coinHits = raycaster.intersectObjects(coinGroup.children);
+    if (coinHits.length > 0) {
+      document.getElementById('dossier-modal').style.display = 'block';
+      playTumblerClick(880);
+    }
+  }
+});
+
+function cycleTumbler(idx) {
+  tumblerValues[idx] = (tumblerValues[idx] + 1) % 10;
+  tumblers[idx].userData.capMat.map = createDigitTexture(tumblerValues[idx]);
+  tumblers[idx].rotation.z += Math.PI / 5;
+  playTumblerClick(480 + tumblerValues[idx] * 40);
+
+  if (
+    tumblerValues[0] === targetSolution[0] &&
+    tumblerValues[1] === targetSolution[1] &&
+    tumblerValues[2] === targetSolution[2]
+  ) {
+    unlockVault();
+  }
+}
+
+function unlockVault() {
+  puzzleSolved = true;
+  document.getElementById('vault-status').textContent = 'SOLENOID TRIPPED [ACCESS GRANTED]';
+  document.getElementById('vault-status').style.color = '#e9c46a';
+
+  hintBox.innerHTML = '<span style="color:#e9c46a;font-weight:bold;">LOCK DISENGAGED!</span> Tap the Master Coin inside.';
+  hintBox.classList.remove('dismissed');
+
+  playSolenoidThud();
+  setTimeout(playHingeCreak, 250);
+}
+
+function closeDossier() {
+  document.getElementById('dossier-modal').style.display = 'none';
+}
+
+// -------------------------------------------------------------
+// RENDER & RESIZE LOOP
+// -------------------------------------------------------------
+let lidOpenAngle = 0;
+const targetLidAngle = -Math.PI * 0.65;
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  if (puzzleSolved && lidOpenAngle > targetLidAngle) {
+    lidOpenAngle -= 0.04;
+    lidPivot.rotation.x = lidOpenAngle;
+  }
+
+  if (puzzleSolved) {
+    coinGroup.position.y = 0.15 + Math.sin(Date.now() * 0.003) * 0.03;
+    coinGroup.rotation.y += 0.01;
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onWindowResize);
+window.addEventListener('orientationchange', () => setTimeout(onWindowResize, 100));
+
+animate();
+</script>
+</body>
+</html>
