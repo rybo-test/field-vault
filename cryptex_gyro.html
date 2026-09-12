@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>The Gyro Cryptex - Field Puzzle</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #080c08;
+      color: #94d2bd;
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+    }
+
+    #webgl-container { width: 100vw; height: 100vh; display: block; }
+
+    #hud {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 14px) 14px env(safe-area-inset-bottom, 14px) 14px;
+      z-index: 10;
+    }
+
+    .hud-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(12, 18, 12, 0.85);
+      border: 1px solid rgba(82, 183, 136, 0.35);
+      padding: 8px 14px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      pointer-events: auto;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .pill-tag {
+      font-size: 12px;
+      color: #e9c46a;
+      letter-spacing: 1px;
+    }
+
+    .btn-action {
+      background: #2d4a2d;
+      color: #d8f3dc;
+      border: 1px solid #52b788;
+      font-family: inherit;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    .btn-action:active { background: #406c40; }
+
+    /* Spirit Level UI Gauge */
+    #level-gauge-container {
+      background: rgba(12, 18, 12, 0.9);
+      border: 1px solid rgba(82, 183, 136, 0.4);
+      padding: 10px 16px;
+      border-radius: 20px;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin: 0 auto;
+      max-width: 280px;
+      width: 100%;
+    }
+
+    #level-tube {
+      width: 220px;
+      height: 20px;
+      background: #0f2415;
+      border: 2px solid #52b788;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #target-zone {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 28px;
+      height: 100%;
+      background: rgba(233, 196, 106, 0.3);
+      border-left: 2px dashed #e9c46a;
+      border-right: 2px dashed #e9c46a;
+    }
+
+    #spirit-bubble {
+      width: 20px;
+      height: 14px;
+      background: #55ff77;
+      box-shadow: 0 0 10px #55ff77;
+      border-radius: 50%;
+      position: absolute;
+      top: 1px;
+      left: 10px;
+      transition: left 0.08s ease-out;
+    }
+
+    .gauge-label {
+      font-size: 11px;
+      color: #74c69d;
+      letter-spacing: 0.5px;
+    }
+
+    #toast {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(12, 18, 12, 0.95);
+      border: 1px solid #e9c46a;
+      color: #e9c46a;
+      font-size: 12px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 20;
+    }
+    #toast.active { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Modal */
+    #solved-modal {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100vw - 32px);
+      max-width: 440px;
+      background: #0d140d;
+      border: 2px solid #e9c46a;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      padding: 22px;
+      border-radius: 8px;
+      display: none;
+      pointer-events: auto;
+      z-index: 100;
+    }
+    #solved-modal h2 { color: #e9c46a; font-size: 18px; margin-bottom: 10px; text-align: center; }
+    .coord-box {
+      background: #162416;
+      border: 1px solid #52b788;
+      padding: 12px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ee9b00;
+      margin: 14px 0;
+      letter-spacing: 1px;
+    }
+    .close-btn {
+      width: 100%;
+      padding: 10px;
+      background: #2d4a2d;
+      color: #d8f3dc;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="webgl-container"></div>
+
+  <div id="hud">
+    <div class="hud-bar">
+      <span class="pill-tag">BRASS GYRO CRYPTEX</span>
+      <span id="lock-state" style="color:#e76f51; font-size:12px;">🔒 GRAVITY LOCKED</span>
+      <button class="btn-action" id="gyro-btn" onclick="initGyro()">CALIBRATE GYRO</button>
+    </div>
+
+    <!-- Live Bubble Spirit Level -->
+    <div id="level-gauge-container">
+      <div class="gauge-label" id="tilt-text">TILT PHONE TO 45° (LEVEL PIN)</div>
+      <div id="level-tube">
+        <div id="target-zone"></div>
+        <div id="spirit-bubble"></div>
+      </div>
+      <input type="range" id="desktop-slider" min="0" max="90" value="0" style="width:100%; display:none;" oninput="handleSlider(this.value)">
+    </div>
+
+    <div style="text-align:center; font-size:11px; color:#52b788; background:rgba(6,9,6,0.7); padding:4px 10px; border-radius:12px; margin:0 auto;">
+      [Tilt Phone] Balance Bubble | [Tap Rings] Spin Letters (Target: C-A-C-H-E)
+    </div>
+  </div>
+
+  <div id="toast">Pin Dropped! Tumblers Unlocked.</div>
+
+  <div id="solved-modal">
+    <h2>CORE SLEEVE DEPLOYED!</h2>
+    <p style="font-size:13px; color:#b7e4c7; line-height:1.4;">
+      The internal gravity tumblers cleared the shear line. The brass sleeve has slid open:
+    </p>
+    <div class="coord-box">N 47° 34.222 W 053° 33.351</div>
+    <p style="font-size:12px; color:#74c69d; text-align:center; margin-bottom:12px;">
+      LOGBOOK CLAIMED — PROCEED TO GROUND ZERO
+    </p>
+    <button class="close-btn" onclick="document.getElementById('solved-modal').style.display='none'">RESUME INSPECTION</button>
+  </div>
+
+<script>
+// -------------------------------------------------------------
+// AUDIO & HAPTICS
+// -------------------------------------------------------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function triggerHaptic(ms = 15) {
+  if (navigator.vibrate) try { navigator.vibrate(ms); } catch(e) {}
+}
+
+function playClickSound(freq = 600) {
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, t + 0.04);
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.04);
+  } catch(e) {}
+}
+
+function playSolenoidRelease() {
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(35, t + 0.2);
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  } catch(e) {}
+}
+
+// -------------------------------------------------------------
+// THREE.JS SCENE SETUP
+// -------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070b08);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 5.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('webgl-container').appendChild(renderer.domElement);
+
+const ambientLight = new THREE.AmbientLight(0xd8f3dc, 0.65);
+scene.add(ambientLight);
+
+const spotLight = new THREE.SpotLight(0xffeedd, 2.4);
+spotLight.position.set(3, 5, 4);
+spotLight.angle = Math.PI / 3;
+spotLight.castShadow = true;
+scene.add(spotLight);
+
+const rimLight = new THREE.DirectionalLight(0x52b788, 0.8);
+rimLight.position.set(-3, -2, -2);
+scene.add(rimLight);
+
+// -------------------------------------------------------------
+// THE CRYPTEX ASSEMBLY
+// -------------------------------------------------------------
+const cryptexRoot = new THREE.Group();
+cryptexRoot.rotation.z = Math.PI / 2; // Horizontal cylinder
+scene.add(cryptexRoot);
+
+const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.9 });
+const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x222a22, roughness: 0.5, metalness: 0.8 });
+const parchmentMat = new THREE.MeshStandardMaterial({ color: 0xf5ecd7, roughness: 0.9 });
+
+// Central Steel Core Shaft
+const shaftGeo = new THREE.CylinderGeometry(0.32, 0.32, 4.4, 24);
+const shaftMesh = new THREE.Mesh(shaftGeo, darkMetalMat);
+cryptexRoot.add(shaftMesh);
+
+// Internal Parchment Core (Visible when opened)
+const rollGeo = new THREE.CylinderGeometry(0.34, 0.34, 3.2, 24);
+const rollMesh = new THREE.Mesh(rollGeo, parchmentMat);
+cryptexRoot.add(rollMesh);
+
+// Left End Cap with Spirit Level Housing
+const leftCap = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.6, 28), brassMat);
+leftCap.position.y = 1.9;
+cryptexRoot.add(leftCap);
+
+// Right End Cap
+const rightCapGroup = new THREE.Group();
+rightCapGroup.position.y = -1.9;
+const rightCap = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.6, 28), brassMat);
+rightCapGroup.add(rightCap);
+cryptexRoot.add(rightCapGroup);
+
+// 5 Rotating Alphabet Tumbler Rings
+const ringMeshes = [];
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const targetWord = "CACHE";
+const currentIndices = [2, 0, 2, 7, 4]; // Scrambled starting letters (C-A-C-H-E is [2, 0, 2, 7, 4])
+// Initialize scrambled
+const ringState = [0, 12, 18, 3, 22]; // Random initial positions
+
+function createLetterTexture(letter) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#b89028';
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 80px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(letter, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+const ringYOffsets = [1.2, 0.6, 0.0, -0.6, -1.2];
+
+for (let i = 0; i < 5; i++) {
+  const ringGroup = new THREE.Group();
+  ringGroup.position.y = ringYOffsets[i];
+
+  const ringGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.48, 28);
+  const ring = new THREE.Mesh(ringGeo, brassMat);
+  ringGroup.add(ring);
+
+  // Front letter badge
+  const badgeMat = new THREE.MeshBasicMaterial({ map: createLetterTexture(alphabet[ringState[i]]) });
+  const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.32), badgeMat);
+  badge.position.set(0, 0, 0.63);
+  badge.userData = { ringIndex: i, isBadge: true };
+  ringGroup.add(badge);
+
+  ringGroup.userData = { index: i, badgeMat: badgeMat };
+  cryptexRoot.add(ringGroup);
+  ringMeshes.push(ringGroup);
+}
+
+// -------------------------------------------------------------
+// SENSOR GYRO & SPIRIT BUBBLE LOGIC
+// -------------------------------------------------------------
+let gravityLocked = true;
+let solved = false;
+let currentPitch = 0; // 0 to 90 degrees
+const targetPitch = 45;
+const tolerance = 4; // 41° to 49° balances the pin
+
+const bubbleEl = document.getElementById('spirit-bubble');
+const lockStateEl = document.getElementById('lock-state');
+const tiltTextEl = document.getElementById('tilt-text');
+
+function updateBubbleUI(pitch) {
+  // Map 0 - 90 deg to 8px - 192px within tube
+  const clamped = Math.max(0, Math.min(90, pitch));
+  const pos = 8 + (clamped / 90) * 184;
+  bubbleEl.style.left = `${pos}px`;
+
+  // Tilt cryptex in 3D scene to match phone orientation
+  cryptexRoot.rotation.x = (pitch * Math.PI) / 180;
+
+  // Balance Check
+  if (Math.abs(pitch - targetPitch) <= tolerance) {
+    if (gravityLocked) {
+      gravityLocked = false;
+      lockStateEl.textContent = '🔓 PIN DROPPED';
+      lockStateEl.style.color = '#52b788';
+      tiltTextEl.textContent = 'GRAVITY PIN ENGAGED! ENTER WORD';
+      tiltTextEl.style.color = '#e9c46a';
+      playSolenoidRelease();
+      triggerHaptic(50);
+      showToast("Pin dropped! Tumblers unlocked.");
+    }
+  } else {
+    if (!gravityLocked && !solved) {
+      gravityLocked = true;
+      lockStateEl.textContent = '🔒 GRAVITY LOCKED';
+      lockStateEl.style.color = '#e76f51';
+      tiltTextEl.textContent = 'HOLD AT 45° TO DROP PIN';
+      tiltTextEl.style.color = '#74c69d';
+    }
+  }
+}
+
+function handleSlider(val) {
+  updateBubbleUI(parseFloat(val));
+}
+
+// Device Orientation Permission Handshake (iOS / Android)
+function initGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          window.addEventListener('deviceorientation', handleOrientation);
+          document.getElementById('gyro-btn').style.display = 'none';
+        }
+      })
+      .catch(console.error);
+  } else if ('ondeviceorientation' in window) {
+    window.addEventListener('deviceorientation', handleOrientation);
+    document.getElementById('gyro-btn').style.display = 'none';
+  } else {
+    // Desktop Fallback
+    document.getElementById('desktop-slider').style.display = 'block';
+    document.getElementById('gyro-btn').textContent = 'DESKTOP SLIDER ACTIVE';
+  }
+}
+
+function handleOrientation(e) {
+  // Beta is front-to-back tilt (-180 to 180)
+  if (e.beta !== null) {
+    currentPitch = Math.abs(e.beta);
+    updateBubbleUI(currentPitch);
+  }
+}
+
+// Show desktop slider if non-mobile
+if (!/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+  document.getElementById('desktop-slider').style.display = 'block';
+}
+
+// -------------------------------------------------------------
+// TOUCH RAYCASTING & TUMBLER ROTATION
+// -------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+window.addEventListener('pointerup', (e) => {
+  if (solved) return;
+
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  for (let i = 0; i < ringMeshes.length; i++) {
+    const hits = raycaster.intersectObjects(ringMeshes[i].children);
+    if (hits.length > 0) {
+      cycleRing(i);
+      return;
+    }
+  }
+});
+
+function cycleRing(index) {
+  if (gravityLocked) {
+    playClickSound(180); // Dull locked clunk
+    triggerHaptic(10);
+    showToast("Locked! Balance spirit bubble at 45° first");
+    return;
+  }
+
+  ringState[index] = (ringState[index] + 1) % 26;
+  const letter = alphabet[ringState[index]];
+  ringMeshes[index].userData.badgeMat.map = createLetterTexture(letter);
+
+  playClickSound(480 + ringState[index] * 20);
+  triggerHaptic(15);
+
+  checkWordSolution();
+}
+
+function checkWordSolution() {
+  const current = ringState.map(i => alphabet[i]).join('');
+  if (current === targetWord) {
+    triggerSolveSequence();
+  }
+}
+
+function triggerSolveSequence() {
+  solved = true;
+  lockStateEl.textContent = '🎉 UNLOCKED';
+  lockStateEl.style.color = '#e9c46a';
+  playSolenoidRelease();
+  triggerHaptic([30, 60, 30]);
+
+  setTimeout(() => {
+    document.getElementById('solved-modal').style.display = 'block';
+  }, 1200);
+}
+
+let toastTimer = null;
+function showToast(txt) {
+  const t = document.getElementById('toast');
+  t.textContent = txt;
+  t.classList.add('active');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('active'), 2800);
+}
+
+// -------------------------------------------------------------
+// RENDER & SLEEVE SEPARATION ANIMATION
+// -------------------------------------------------------------
+let slideDistance = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Core slides open when solved
+  if (solved && slideDistance < 1.4) {
+    slideDistance += 0.04;
+    rightCapGroup.position.y = -1.9 - slideDistance;
+    ringMeshes[3].position.y = -0.6 - slideDistance * 0.4;
+    ringMeshes[4].position.y = -1.2 - slideDistance * 0.8;
+  }
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>
