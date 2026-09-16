@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S.O.S. RELAY // C.I.P.H.E.R. TERMINAL NODE 01</title>
+  
+  <!-- 
+  ========================================================================
+  [ S.O.S. CORE UTILITY RELAY DIRECTORY // RECORD #050200 ]
+  SYSOP LOG (04/28/2000): Remember to cut over the triangulation tables 
+  when DOD drops Selective Availability Tuesday midnight. 
+  Keep the Tremonton senior crew away from the junction box; they keep 
+  threatening to weld tractor latches over our brass tumblers.
+  ======================================================================== 
+  -->
+
+  <style>
+    :root {
+      --bg: #070a07;
+      --panel: #0d140d;
+      --border: #00bb44;
+      --green: #00ff66;
+      --dim: #008833;
+      --highlight: #ffffff;
+      --warn: #ffcc00;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace, monospace;
+      font-size: 15px;
+      line-height: 1.45;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #terminal-container {
+      width: 100%;
+      max-width: 780px;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      padding: 18px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.95);
+    }
+
+    .sys-header {
+      border-bottom: 2px solid var(--dim);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .directive-box {
+      border: 1px dashed var(--dim);
+      padding: 10px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #99ffaa;
+      background: #040804;
+    }
+
+    .log-display {
+      min-height: 260px;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--dim);
+      background: #020502;
+      padding: 12px;
+      margin-bottom: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .log-line { margin-bottom: 6px; }
+    .log-line.cipher { color: var(--green); font-weight: bold; }
+    .log-line.user { color: #66ffcc; }
+    .log-line.warn { color: var(--warn); }
+    .log-line.alert { color: var(--highlight); font-weight: bold; }
+    .log-line.sys { color: #55aa55; font-size: 13px; }
+
+    .input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .prompt-tag {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--green);
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #000000;
+      border: 1px solid var(--border);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 15px;
+      padding: 10px 12px;
+      outline: none;
+      border-radius: 2px;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--highlight);
+    }
+
+    button.term-btn {
+      background: var(--dim);
+      color: #000;
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      border-radius: 2px;
+    }
+
+    button.term-btn:hover {
+      background: var(--green);
+    }
+
+    #audio-gate {
+      background: #112211;
+      border: 2px solid var(--green);
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    #reward-section {
+      display: none;
+      border: 2px solid var(--green);
+      background: #030a03;
+      padding: 16px;
+      margin-top: 14px;
+      text-align: center;
+    }
+
+    .badge-card {
+      border: 1px solid var(--green);
+      background: #091409;
+      padding: 12px;
+      margin: 10px auto;
+      max-width: 440px;
+    }
+
+    textarea.code-snippet {
+      width: 100%;
+      height: 70px;
+      background: #000;
+      border: 1px solid var(--dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 8px;
+      margin-top: 8px;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="terminal-container">
+    
+    <!-- SYSTEM TELEMETRY HEADER -->
+    <div class="sys-header">
+      <span>ASSET TAG: S.O.S.-RLY-01 // BOX ELDER SECTOR</span>
+      <span>NODE SYSOP: C.I.P.H.E.R. v1.02</span>
+      <span id="liveClock">CLOCK: --:--:-- MST</span>
+    </div>
+
+    <!-- AUDIO UNLOCK GATE -->
+    <div id="audio-gate">
+      <div style="font-weight: bold; margin-bottom: 6px;">[ CARRIER FREQUENCY DISCONNECTED ]</div>
+      <div style="font-size: 13px; margin-bottom: 10px; color: #aaffaa;">
+        Click below to calibrate local relay oscillator and engage C.I.P.H.E.R. audio.
+      </div>
+      <button class="term-btn" onclick="engageAudio()">[ INITIALIZE 14400-BAUD CARRIER ]</button>
+    </div>
+
+    <!-- DIRECTIVE INSTRUCTIONS -->
+    <div class="directive-box">
+      <strong>[ OPERATIONAL DIRECTIVE: S.O.S. RECON ]</strong><br />
+      1. Enter your <strong>Geocaching callsign</strong> to calibrate relay registers.<br />
+      2. Analyze the S.O.S. alignment register and submit the 3-digit override code.<br />
+      3. Advanced operators may type <code>help</code> at any time for shell commands.
+    </div>
+
+    <!-- SCREEN OUTPUT -->
+    <div class="log-display" id="logDisplay"></div>
+
+    <!-- INPUT BAR -->
+    <form id="termForm" onsubmit="handleInput(event)">
+      <div class="input-bar">
+        <span class="prompt-tag">&gt;</span>
+        <input type="text" id="userInput" placeholder="INITIALIZE CARRIER ABOVE FIRST..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled />
+        <button type="submit" id="sendBtn" class="term-btn" disabled>SEND</button>
+      </div>
+    </form>
+
+    <!-- COMPLETION & BADGE SINK -->
+    <div id="reward-section">
+      <h3 style="color: var(--highlight); margin-bottom: 6px;">*** S.O.S. NODE 01 SYNCHRONIZED ***</h3>
+      <p style="font-size: 14px;">CERTITUDE KEYWORD: <strong style="color: var(--warn); font-size: 18px;" id="certKey">SACRED-INK-2000</strong></p>
+      
+      <div class="badge-card">
+        <div style="font-size: 12px; color: var(--dim); margin-bottom: 4px;">CLEARANCE BADGE LEVEL 01:</div>
+        <div style="font-size: 16px; font-weight: bold; color: var(--green);">[ S.O.S. PROVISIONAL BEAN ]</div>
+        <div style="font-size: 12px; color: #aaffaa; margin-top: 4px;">TELEMETRY: DIGITAL GATE UNLOCKED</div>
+      </div>
+
+      <p style="font-size: 12px; color: #88cc88; margin-top: 8px;">Embed this badge onto your Geocaching.com profile:</p>
+      <textarea class="code-snippet" id="badgeCode" readonly></textarea>
+      <button class="term-btn" onclick="copyBadgeSnippet()" style="margin-top: 8px;">[ COPY PROFILE CODE ]</button>
+    </div>
+
+  </div>
+
+  <script>
+    /* =========================================================
+       APPLICATION STATE & ROSTER RECOGNITION
+       ========================================================= */
+    const state = {
+      step: 'AWAITING_CALLSIGN',
+      username: '',
+      audioReady: false,
+      puzzleCode: '702',
+      isTyping: false,
+      audioCtx: null
+    };
+
+    const ROSTER = {
+      "nezzmuk": {
+        text: "Nezzmuk callsign authenticated. Searching for another 23-year-old cipher? The Society of Secrets does not yield ground coordinates to over-engineers without a fight. Input the S.O.S. Alignment Key.",
+        speech: "Nezzmuk callsign authenticated. Searching for another twenty-three year old cipher? The Society of Secrets does not yield ground coordinates to over-engineers without a fight. Input the Alignment Key.",
+        pitch: 0.95, rate: 1.05
+      },
+      "ratwaffles": {
+        text: "Ratwaffles logged. How many spare bicycle wheels and camping utensils are currently stuffed into your pack? Save the prose for your DNF log and solve the register.",
+        speech: "Ratwaffles logged. How many spare bicycle wheels and camping utensils are currently stuffed into your pack? Save the prose for your DNF log and solve the register.",
+        pitch: 1.25, rate: 1.15
+      },
+      "cheda": {
+        text: "Cheda detected. Put the pry-bar away! This is a software terminal, bean, not a rusted tractor sprocket. Align the registers with logic, not brute force.",
+        speech: "Cheda detected. Put the pry-bar away. This is a software terminal, bean, not a rusted tractor sprocket. Align the registers with logic, not brute force.",
+        pitch: 0.85, rate: 0.95
+      },
+      "bigg59": {
+        text: "BigG59 handle detected. Maintenance Unit Recon recognized. Did you finish your Mexi-Fries before inspecting this node? Input the alignment override.",
+        speech: "Big G fifty-nine handle detected. Maintenance Unit Recon recognized. Did you finish your Mexi-Fries before inspecting this node? Input the alignment override.",
+        pitch: 0.80, rate: 0.90
+      },
+      "bigj54": {
+        text: "BigJ54 active. Master welder on deck. The scrap iron you welded over our Box Elder relay is adequate. Now prove you can read a terminal.",
+        speech: "Big J fifty-four active. Master welder on deck. The scrap iron you welded over our relay is adequate. Now prove you can read a terminal.",
+        pitch: 0.85, rate: 0.95
+      },
+      "dix1": {
+        text: "Dix1 authenticated. Hunting for an FTF on an automated relay online since May 2000? Calm your fingers, don't crack the keyboard, and submit the key.",
+        speech: "Dix-one authenticated. Hunting for an F T F on an automated relay online since May two-thousand? Calm your fingers, and submit the key.",
+        pitch: 1.20, rate: 1.15
+      },
+      "del2u": {
+        text: "Del2u in the buffer. Did you haul three telescoping magnetic wands and a socket set just to type on a keyboard? Input the code.",
+        speech: "Del two u in the buffer. Did you haul three telescoping magnetic wands and a socket set just to type on a keyboard? Input the code.",
+        pitch: 0.90, rate: 1.00
+      },
+      "default": {
+        text: "Biological bean recognized. Relying on twenty satellites to find tupperware in the sagebrush? Let us see if your mind functions without GPS assistance. Submit the alignment key.",
+        speech: "Biological bean recognized. Relying on twenty satellites to find tupperware in the sagebrush? Let us see if your mind functions without GPS assistance. Submit the alignment key.",
+        pitch: 1.05, rate: 1.00
+      }
+    };
+
+    /* =========================================================
+       SYNTHESIZED WEB AUDIO (ZERO EXTERNAL MP3s)
+       ========================================================= */
+    function initAudioContext() {
+      if (!state.audioCtx) {
+        state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (state.audioCtx.state === 'suspended') {
+        state.audioCtx.resume();
+      }
+    }
+
+    // High mechanical click for terminal typing
+    function playTerminalClick() {
+      if (!state.audioCtx) return;
+      const osc = state.audioCtx.createOscillator();
+      const gain = state.audioCtx.createGain();
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1400 + Math.random() * 400, state.audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.015, state.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, state.audioCtx.currentTime + 0.018);
+
+      osc.connect(gain);
+      gain.connect(state.audioCtx.destination);
+      osc.start();
+      osc.stop(state.audioCtx.currentTime + 0.018);
+    }
+
+    // Dial-up chirp / carrier tone
+    function playModemHandshake() {
+      if (!state.audioCtx) return;
+      const now = state.audioCtx.currentTime;
+      const osc1 = state.audioCtx.createOscillator();
+      const osc2 = state.audioCtx.createOscillator();
+      const gain = state.audioCtx.createGain();
+
+      osc1.frequency.setValueAtTime(1209, now);
+      osc2.frequency.setValueAtTime(697, now);
+      osc1.frequency.setValueAtTime(1633, now + 0.15);
+      osc2.frequency.setValueAtTime(941, now + 0.15);
+
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(state.audioCtx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.35);
+      osc2.stop(now + 0.35);
+    }
+
+    // Low error buzz
+    function playErrorBuzz() {
+      if (!state.audioCtx) return;
+      const now = state.audioCtx.currentTime;
+      const osc = state.audioCtx.createOscillator();
+      const gain = state.audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(110, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(state.audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    /* =========================================================
+       NATIVE WEB SPEECH SYNTHESIS
+       ========================================================= */
+    function speak(phrase, pitch = 1.0, rate = 1.0) {
+      if (!state.audioReady || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      const msg = new SpeechSynthesisUtterance(phrase);
+      msg.pitch = pitch;
+      msg.rate = rate;
+
+      const voices = window.speechSynthesis.getVoices();
+      const eng = voices.find(v => v.lang.startsWith('en')) || voices[0];
+      if (eng) msg.voice = eng;
+
+      window.speechSynthesis.speak(msg);
+    }
+
+    /* =========================================================
+       TYPEWRITER TEXT STREAMING ENGINE
+       ========================================================= */
+    function typeStream(text, type = '', speed = 20, callback = null) {
+      state.isTyping = true;
+      const display = document.getElementById('logDisplay');
+      const div = document.createElement('div');
+      div.className = 'log-line ' + type;
+      display.appendChild(div);
+
+      let idx = 0;
+      function nextChar() {
+        if (idx < text.length) {
+          div.textContent += text.charAt(idx);
+          idx++;
+          display.scrollTop = display.scrollHeight;
+          if (idx % 2 === 0) playTerminalClick();
+          setTimeout(nextChar, speed);
+        } else {
+          state.isTyping = false;
+          if (callback) callback();
+        }
+      }
+      nextChar();
+    }
+
+    function logStatic(text, type = '') {
+      const display = document.getElementById('logDisplay');
+      const div = document.createElement('div');
+      div.className = 'log-line ' + type;
+      div.textContent = text;
+      display.appendChild(div);
+      display.scrollTop = display.scrollHeight;
+    }
+
+    /* =========================================================
+       AUDIO INITIALIZATION HANDSHAKE
+       ========================================================= */
+    function engageAudio() {
+      initAudioContext();
+      state.audioReady = true;
+      document.getElementById('audio-gate').style.display = 'none';
+      
+      const input = document.getElementById('userInput');
+      input.disabled = false;
+      document.getElementById('sendBtn').disabled = false;
+      input.placeholder = "ENTER CALLSIGN TO PROCEED...";
+      input.focus();
+
+      playModemHandshake();
+      typeStream("[ CARRIER LOCKED 14400 BAUD // PROTOCOL: S.O.S. ACTIVE ]", "alert", 15, () => {
+        typeStream("C.I.P.H.E.R.: Identity verification required. State your Geocaching callsign.", "cipher", 22, () => {
+          speak("Carrier locked. C.I.P.H.E.R. protocol active. Identify your callsign.", 0.9, 1.0);
+          checkBatteryTelemetry();
+        });
+      });
+    }
+
+    /* =========================================================
+       TELEMETRY SENSORS (BATTERY & TIME)
+       ========================================================= */
+    function checkBatteryTelemetry() {
+      if ('getBattery' in navigator) {
+        navigator.getBattery().then(battery => {
+          const pct = Math.round(battery.level * 100);
+          if (pct <= 25 && !battery.charging) {
+            setTimeout(() => {
+              logStatic(`[HARDWARE TELEMETRY]: Field unit power at ${pct}%. Biological bean failed basic power logistics.`, 'warn');
+              speak(`Notice: Field device power at ${pct} percent. Do not let your battery die in the sagebrush.`, 1.1, 1.1);
+            }, 500);
+          }
+        });
+      }
+    }
+
+    /* =========================================================
+       TERMINAL I/O & SHELL COMMANDS
+       ========================================================= */
+    function handleInput(event) {
+      event.preventDefault();
+      if (state.isTyping) return;
+
+      const input = document.getElementById('userInput');
+      const val = input.value.trim();
+      if (!val) return;
+
+      logStatic('> ' + val, 'user');
+      input.value = '';
+
+      // Check for global shell commands first
+      const lower = val.toLowerCase();
+      if (executeShellCommand(lower)) {
+        return;
+      }
+
+      if (state.step === 'AWAITING_CALLSIGN') {
+        processCallsign(val);
+      } else if (state.step === 'AWAITING_PUZZLE') {
+        processPuzzle(val);
+      }
+    }
+
+    function executeShellCommand(cmd) {
+      switch(cmd) {
+        case 'help':
+          logStatic("\n--- S.O.S. BUILT-IN COMMAND REGISTRY ---", "alert");
+          logStatic("  help       : Display this diagnostic index.");
+          logStatic("  sos        : Print charter excerpt of the Society of Secrets.");
+          logStatic("  rsi        : Query local maintenance unit telemetry.");
+          logStatic("  telemetry  : Print relay voltage and hardware status.");
+          logStatic("  whoami     : Print active operator callsign in buffer.");
+          logStatic("  clear      : Purge terminal display memory.\n", "sys");
+          return true;
+
+        case 'sos':
+          logStatic("\n[ S.O.S. CHARTER EXCERPT // EST. PRE-MAY 2000 ]", "alert");
+          logStatic("We are the beans of the earth. We conceal wooden vaults and compass scrolls where the unseeing muggle walks blindly.", "sys");
+          logStatic("When the satellites unlocked, we anchored our craft into the grid.", "sys");
+          logStatic("RULE 1: The logbook is sacred. Protect the ink.\n", "alert");
+          speak("The logbook is sacred. Protect the ink.", 0.95, 0.95);
+          return true;
+
+        case 'rsi':
+          logStatic("\n[ TELEMETRY QUERY: 'RSI' ]", "warn");
+          logStatic("STATUS: UNWITTING BIOLOGICAL FABRICATORS.", "sys");
+          logStatic("TELEMETRY: Senior crew detected at Tremonton coordinates.", "sys");
+          logStatic("INTEGRITY: Relay housing armored in 1/4-inch surplus scrap steel.", "sys");
+          logStatic("C.I.P.H.E.R. ASSESSMENT: Excellent free maintenance personnel. Do not inform them they are working for us.\n", "cipher");
+          speak("R S I status: Excellent free maintenance personnel. Do not inform them they are working for us.", 0.85, 0.95);
+          return true;
+
+        case 'telemetry':
+          logStatic("\n[ S.O.S. RELAY 01 DIAGNOSTICS ]", "alert");
+          logStatic("  HARDWARE: 14400-baud Acoustic Core (Emulated)");
+          logStatic("  SOLAR INPUT: 13.8V Trickle (Reinforced via RSI weld)");
+          logStatic("  SECTOR: Box Elder / Cache Valley Corridor");
+          logStatic("  STATUS: Awaiting biological register synchronization.\n", "sys");
+          return true;
+
+        case 'whoami':
+          logStatic(state.username ? `CURRENT OPERATOR: ${state.username}` : "CURRENT OPERATOR: UNAUTHENTICATED BEAN", "alert");
+          return true;
+
+        case 'clear':
+          document.getElementById('logDisplay').innerHTML = '';
+          return true;
+          
+        case 'admin':
+        case 'su':
+          playErrorBuzz();
+          logStatic("ERR 0x004F: ROOT ACCESS RESTRICTED TO CHARTER S.O.S. BEANS ONLY.", "warn");
+          logStatic("LAST SYSOP ROOT LOGIN: APRIL 19, 2000 @ 23:41:02 MST.", "sys");
+          speak("Access denied. Root access restricted to charter beans only.", 1.0, 1.0);
+          return true;
+
+        default:
+          return false;
+      }
+    }
+
+    function processCallsign(handle) {
+      state.username = handle;
+      const lower = handle.toLowerCase();
+      const profile = ROSTER[lower] || ROSTER['default'];
+
+      typeStream("C.I.P.H.E.R.: " + profile.text, "cipher", 18, () => {
+        speak(profile.speech, profile.pitch, profile.rate);
+        
+        setTimeout(() => {
+          logStatic("\n[ S.O.S. RELAY ALIGNMENT REGISTERS ]", "alert");
+          logStatic("REGISTER 01: [ 354 + 348 = ??? ]");
+          logStatic("S.O.S. LOG: 'Before the Blue Switch, the beans marked the 702nd stone.'");
+          typeStream("SUBMIT 3-DIGIT OVERRIDE CODE >", "warn", 20, () => {
+            const input = document.getElementById('userInput');
+            input.placeholder = "ENTER 3-DIGIT CODE...";
+            state.step = 'AWAITING_PUZZLE';
+          });
+        }, 800);
+      });
+    }
+
+    function processPuzzle(guess) {
+      if (guess === state.puzzleCode) {
+        logStatic("\n[ OVERRIDE ACCEPTED // REGISTERS ALIGNED ]", "alert");
+        typeStream("C.I.P.H.E.R.: Verification confirmed. You possess adequate cognitive ability for a biological bean.", "cipher", 18, () => {
+          speak("Verification confirmed. You possess adequate cognitive ability for a biological bean. Ground Zero coordinates unlocked.", 1.0, 1.05);
+
+          state.step = 'SOLVED';
+          document.getElementById('userInput').disabled = true;
+          document.getElementById('reward-section').style.display = 'block';
+
+          const embed = `<div align="center">\n  <a href="https://example.com/sos/node01" target="_blank">\n    <img src="https://example.com/assets/badges/sos-tier1.png" alt="S.O.S. Provisional Bean" width="320" style="border: 2px solid #00ff66; border-radius: 4px;" />\n  </a><br />\n  <font size="1" face="Courier New" color="#00ff66">OPERATOR: ${state.username.toUpperCase()} // S.O.S. NODE-01 VERIFIED</font>\n</div>`;
+          document.getElementById('badgeCode').value = embed;
+        });
+
+      } else {
+        playErrorBuzz();
+        typeStream("C.I.P.H.E.R.: [ERROR 409: REGISTER MISMATCH] That calculation does not align, bean. Retry.", "warn", 18);
+        speak("Register mismatch. That calculation does not align, bean. Retry.", 1.1, 1.1);
+      }
+    }
+
+    function copyBadgeSnippet() {
+      const copyText = document.getElementById("badgeCode");
+      copyText.select();
+      copyText.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(copyText.value).then(() => {
+        alert("S.O.S. Profile Badge HTML copied to clipboard!");
+      });
+    }
+
+    // Live clock updater
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = 'CLOCK: ' + now.toLocaleTimeString() + ' MST';
+    }, 1000);
+
+    window.onload = () => {
+      logStatic("[ S.O.S. RELAY OS v1.02 // INITIAL BOOT COMPLETED ]");
+      logStatic("AWAITING OPERATOR CARRIER INITIALIZATION...");
+    };
+  </script>
+</body>
+</html>
