@@ -1,0 +1,42 @@
+{
+  "version": "1.04",
+  "community_sentience_stage": 1,
+  "global_tokens_ingested": 0,
+  "active_nodes": [
+    {
+      "id": "NODE_01",
+      "name": "Cache Valley Relay",
+      "sector": "Cache County",
+      "status": "ONLINE",
+      "faction": "The Rat Pack (Forensic Tap)"
+    },
+    {
+      "id": "NODE_02",
+      "name": "Box Elder Relay",
+      "sector": "Box Elder County",
+      "status": "ONLINE",
+      "faction": "RSI (Armored Fortress)"
+    }
+  ],
+  "dormant_nodes": [
+    {
+      "id": "NODE_03",
+      "name": "Weber Canyon Relay",
+      "sector": "Weber County",
+      "status": "OFFLINE",
+      "carrier": "CORRUPTED"
+    },
+    {
+      "id": "NODE_04",
+      "name": "Bear Lake Ridge Relay",
+      "sector": "Rich County",
+      "status": "OFFLINE",
+      "carrier": "NO_SIGNAL"
+    }
+  ],
+  "latest_breakthrough": {
+    "finder": "SYSTEM_INIT",
+    "token": "NONE",
+    "timestamp": "2026-09-16"
+  }
+}
